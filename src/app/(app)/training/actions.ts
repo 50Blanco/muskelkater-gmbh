@@ -90,6 +90,19 @@ export async function finishWorkout(rawInput: unknown): Promise<ActionResult> {
     .limit(1);
   if (!session) return { error: "Diese Trainingseinheit wurde nicht gefunden." };
 
+  // P5: Cross-Check — Session muss zum gesendeten Tag gehören.
+  if (session.workoutDayId !== input.dayId) {
+    return { error: "Session passt nicht zu diesem Trainingstag." };
+  }
+
+  // P1: Idempotent — bereits abgeschlossene Session nicht nochmals schreiben.
+  if (session.status === "completed") return { ok: true };
+
+  // Nur aktive Sessions können abgeschlossen werden.
+  if (session.status !== "active") {
+    return { error: "Diese Trainingseinheit kann nicht mehr abgeschlossen werden." };
+  }
+
   // Eigene Übungen in den Sätzen müssen wirklich dem Nutzer gehören.
   const customIds = [
     ...new Set(
