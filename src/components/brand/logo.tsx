@@ -28,7 +28,7 @@ export function Logo({ className, iconOnly = false }: LogoProps) {
       </span>
       {!iconOnly && (
         <span className="font-display text-base font-bold tracking-tight text-foreground">
-          MUSKEL<span className="text-accent">KATER</span>
+          MUSKEL<span className="text-accent">KATER</span> GMBH
         </span>
       )}
     </span>
