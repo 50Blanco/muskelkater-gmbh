@@ -1,26 +1,86 @@
 @import "tailwindcss";
 
+/*
+ * Muskelkater Design System — Dark Luxury, sportlich-premium.
+ * Schwarz · Anthrazit · Silber · Rot (Akzent, sparsam).
+ */
+@theme {
+  /* Flächen */
+  --color-bg: #0a0a0b; /* Schwarz */
+  --color-surface: #141518; /* Anthrazit */
+  --color-surface-2: #1c1e22; /* erhöhte Karte */
+  --color-surface-3: #24272c;
+  --color-border: #2a2d33;
+  --color-border-strong: #3a3e46;
+
+  /* Text / Silber */
+  --color-foreground: #f4f5f7; /* primär */
+  --color-muted: #a7acb5; /* sekundär (Silber) */
+  --color-dim: #6e737c; /* tertiär */
+
+  /* Akzent Rot — energisch, nicht billig (kontrolliert) */
+  --color-accent: #e0223a;
+  --color-accent-hover: #f23048;
+  --color-accent-foreground: #ffffff;
+  --color-accent-soft: rgba(224, 34, 58, 0.12);
+  --color-accent-ring: rgba(224, 34, 58, 0.45);
+
+  /* Status */
+  --color-success: #34c759;
+  --color-warning: #ffb020;
+  --color-danger: #e0223a;
+
+  /* Radius */
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-lg: 20px;
+
+  /* Fonts (siehe layout.tsx) */
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  border-color: var(--color-border);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Dezente Atmosphäre: radialer Glow oben (premium, nicht aufdringlich) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(60rem 40rem at 50% -10%, rgba(224, 34, 58, 0.06), transparent 60%),
+    radial-gradient(40rem 30rem at 100% 0%, rgba(255, 255, 255, 0.02), transparent 55%);
+}
+
+/* Fokus-Stil global (A11y) */
+:focus-visible {
+  outline: 2px solid var(--color-accent-ring);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
 }
