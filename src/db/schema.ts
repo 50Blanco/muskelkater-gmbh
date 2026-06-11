@@ -12,6 +12,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   doublePrecision,
   index,
@@ -63,6 +64,12 @@ export const sessionStatusEnum = pgEnum("session_status", [
   "active",
   "completed",
   "skipped",
+]);
+
+export const exercisePreferenceEnum = pgEnum("exercise_preference", [
+  "like",
+  "dislike",
+  "neutral",
 ]);
 
 export const habitCadenceEnum = pgEnum("habit_cadence", ["daily", "weekly"]);
@@ -247,6 +254,31 @@ export const exercise = pgTable(
   ],
 );
 
+/**
+ * Eigene Übungen des Nutzers. Bewusst getrennt vom globalen `exercise`-Katalog,
+ * damit der globale Katalog sicher und unveränderlich bleibt. Nur der Eigentümer
+ * sieht und ändert seine Custom-Übungen (RLS).
+ */
+export const customExercise = pgTable(
+  "custom_exercise",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: userId(),
+    name: text("name").notNull(),
+    muscleGroup: text("muscle_group").notNull(),
+    equipment: text("equipment"),
+    location: trainingLocationEnum("location").notNull().default("both"),
+    level: experienceLevelEnum("level").notNull().default("beginner"),
+    instructions: text("instructions"),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (t) => [
+    index("idx_custom_exercise_user").on(t.userId),
+    ownerPolicy("custom_exercise", t.userId),
+  ],
+);
+
 /* ------------------------------------------------------------------ */
 /* Training                                                          */
 /* ------------------------------------------------------------------ */
@@ -347,9 +379,16 @@ export const workoutSet = pgTable(
     sessionId: uuid("session_id")
       .notNull()
       .references(() => workoutSession.id, { onDelete: "cascade" }),
-    exerciseId: uuid("exercise_id")
-      .notNull()
-      .references(() => exercise.id, { onDelete: "restrict" }),
+    // Genau eine Übungsreferenz ist gesetzt: entweder Katalog- oder Custom-Übung
+    // (per CHECK erzwungen). Katalog-Übungen sind global, Custom-Übungen
+    // gehören dem Nutzer.
+    exerciseId: uuid("exercise_id").references(() => exercise.id, {
+      onDelete: "restrict",
+    }),
+    customExerciseId: uuid("custom_exercise_id").references(
+      () => customExercise.id,
+      { onDelete: "cascade" },
+    ),
     setNumber: integer("set_number").notNull(),
     weightKg: doublePrecision("weight_kg"),
     reps: integer("reps"),
@@ -358,7 +397,39 @@ export const workoutSet = pgTable(
   },
   (t) => [
     index("idx_workout_set_session").on(t.sessionId),
+    check(
+      "workout_set_exercise_ref",
+      sql`(${t.exerciseId} is not null) != (${t.customExerciseId} is not null)`,
+    ),
     ownerPolicy("workout_set", t.userId),
+  ],
+);
+
+/**
+ * Nutzer-Feedback zu (Katalog-)Übungen: gefällt mir / passt nicht, behalten,
+ * vermeiden, optionaler Grund. Eine Zeile pro Nutzer und Übung (Upsert).
+ */
+export const userExercisePreference = pgTable(
+  "user_exercise_preference",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: userId(),
+    exerciseId: uuid("exercise_id")
+      .notNull()
+      .references(() => exercise.id, { onDelete: "cascade" }),
+    preference: exercisePreferenceEnum("preference")
+      .default("neutral")
+      .notNull(),
+    keepInPlan: boolean("keep_in_plan").default(true).notNull(),
+    avoidExercise: boolean("avoid_exercise").default(false).notNull(),
+    reason: text("reason"),
+    painFlag: boolean("pain_flag").default(false).notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    unique("uq_user_exercise_preference").on(t.userId, t.exerciseId),
+    index("idx_user_exercise_preference_user").on(t.userId),
+    ownerPolicy("user_exercise_preference", t.userId),
   ],
 );
 
