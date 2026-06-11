@@ -128,7 +128,7 @@ export function OnboardingWizard() {
     if (!validateCurrentStep()) return;
     setError(null);
     setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
-    window.scrollTo({ top: 0 });
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   }
 
   function goBack() {

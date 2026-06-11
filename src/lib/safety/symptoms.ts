@@ -4,32 +4,60 @@
  * dass ärztliche Abklärung sinnvoll ist.
  */
 
-interface SymptomPattern {
+interface SymptomRule {
   label: string;
-  pattern: RegExp;
+  keywords: string[];
 }
 
-const DANGER_SYMPTOMS: SymptomPattern[] = [
+/*
+ * Substring-Erkennung statt Regex: bewusst ohne `\w*`/`\w+`, damit kein
+ * Catastrophic Backtracking (ReDoS) auf langem Freitext möglich ist.
+ * Verglichen wird gegen den kleingeschriebenen Text mit `includes()`.
+ */
+const DANGER_SYMPTOMS: SymptomRule[] = [
   {
     label: "Brustschmerzen",
-    pattern: /brust\s*schmerz|schmerz\w*\s+(in|an)\s+der\s+brust|druck\s+(in|auf)\s+der\s+brust/i,
+    keywords: [
+      "brustschmerz",
+      "brust schmerz",
+      "schmerz in der brust",
+      "schmerzen in der brust",
+      "schmerz an der brust",
+      "schmerzen an der brust",
+      "druck in der brust",
+      "druck auf der brust",
+    ],
   },
-  { label: "Atemnot", pattern: /atemnot|luftnot|kurzatmig|atembeschwerden/i },
-  { label: "Schwindel", pattern: /schwindel|schwindlig/i },
-  { label: "Herzrasen", pattern: /herzrasen|herzstolpern|herzrhythmus/i },
-  { label: "Ohnmacht", pattern: /ohnmacht|bewusstlos|kollabiert/i },
+  {
+    label: "Atemnot",
+    keywords: ["atemnot", "luftnot", "kurzatmig", "atembeschwerden"],
+  },
+  { label: "Schwindel", keywords: ["schwindel", "schwindlig"] },
+  {
+    label: "Herzrasen",
+    keywords: ["herzrasen", "herzstolpern", "herzrhythmus"],
+  },
+  { label: "Ohnmacht", keywords: ["ohnmacht", "bewusstlos", "kollabiert"] },
   {
     label: "Starke Schmerzen",
-    pattern: /starke[nr]?\s+schmerz|unerträglich\w*\s+schmerz/i,
+    keywords: [
+      "starke schmerz",
+      "starker schmerz",
+      "starken schmerz",
+      "unerträgliche schmerz",
+      "unerträglicher schmerz",
+      "unerträglichen schmerz",
+    ],
   },
 ];
 
 /** Findet erwähnte Warnsymptome im Text. Leeres Array = nichts gefunden. */
 export function detectDangerSymptoms(text: string | null | undefined): string[] {
   if (!text) return [];
-  return DANGER_SYMPTOMS.filter((s) => s.pattern.test(text)).map(
-    (s) => s.label,
-  );
+  const haystack = text.toLowerCase();
+  return DANGER_SYMPTOMS.filter((s) =>
+    s.keywords.some((keyword) => haystack.includes(keyword)),
+  ).map((s) => s.label);
 }
 
 /** Vorsichtiger Hinweistext, wenn Warnsymptome erkannt wurden. */

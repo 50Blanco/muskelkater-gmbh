@@ -9,7 +9,9 @@ import {
   Moon,
   Sparkles,
 } from "lucide-react";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
 import {
@@ -18,13 +20,13 @@ import {
   fitnessGoal,
   nutritionTarget,
   userProfile,
-  workoutDay,
-  workoutDayExercise,
-  workoutPlan,
 } from "@/db/schema";
+import { getActiveTrainingPlan } from "@/lib/training/get-active-plan";
+import { selectNextDay } from "@/lib/plan/select-next-day";
+import { GOAL_TYPE_LABELS } from "@/lib/training/labels";
 import { restartOnboarding } from "@/app/(onboarding)/actions";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -33,14 +35,6 @@ import {
 } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Heute" };
-
-const GOAL_LABELS: Record<string, string> = {
-  build_muscle: "Muskeln aufbauen",
-  lose_fat: "Fett verlieren",
-  get_fit: "Fitter werden",
-  strength: "Stärker werden",
-  maintain: "Gewicht halten",
-};
 
 /** Statische, regelbasierte Coach-Hinweise (Phase 7 bringt die echte Engine). */
 const COACH_TIPS: Record<string, string> = {
@@ -67,7 +61,7 @@ export default async function HeutePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return null; // Layout/Proxy sichern die Route bereits ab.
+  if (!user) redirect("/login"); // Proxy sichert die Route; hier Defense-in-Depth.
 
   const todayLabel = new Intl.DateTimeFormat("de-DE", {
     weekday: "long",
@@ -112,8 +106,9 @@ export default async function HeutePage() {
     );
   }
 
-  const [[goal], [target], [plan], missions, [recommendation]] =
+  const [plan, [goal], [target], missions, [recommendation]] =
     await Promise.all([
+      getActiveTrainingPlan(user.id),
       db
         .select()
         .from(fitnessGoal)
@@ -132,14 +127,6 @@ export default async function HeutePage() {
           ),
         )
         .orderBy(desc(nutritionTarget.createdAt))
-        .limit(1),
-      db
-        .select()
-        .from(workoutPlan)
-        .where(
-          and(eq(workoutPlan.userId, user.id), eq(workoutPlan.active, true)),
-        )
-        .orderBy(desc(workoutPlan.createdAt))
         .limit(1),
       db
         .select()
@@ -164,32 +151,9 @@ export default async function HeutePage() {
         .limit(1),
     ]);
 
-  const days = plan
-    ? await db
-        .select()
-        .from(workoutDay)
-        .where(eq(workoutDay.planId, plan.id))
-        .orderBy(asc(workoutDay.dayIndex))
-    : [];
-
-  const dayIds = days.map((d) => d.id);
-  const dayExercises =
-    dayIds.length > 0
-      ? await db
-          .select({ workoutDayId: workoutDayExercise.workoutDayId })
-          .from(workoutDayExercise)
-          .where(inArray(workoutDayExercise.workoutDayId, dayIds))
-      : [];
-  const exerciseCounts = new Map<string, number>();
-  for (const row of dayExercises) {
-    exerciseCounts.set(
-      row.workoutDayId,
-      (exerciseCounts.get(row.workoutDayId) ?? 0) + 1,
-    );
-  }
-
-  const nextDay = days[0];
-  const goalLabel = goal ? GOAL_LABELS[goal.goalType] : null;
+  const days = plan?.days ?? [];
+  const nextDay = selectNextDay(days);
+  const goalLabel = goal ? GOAL_TYPE_LABELS[goal.goalType] : null;
   const coachMessage =
     recommendation?.message ??
     (goal ? COACH_TIPS[goal.goalType] : COACH_TIPS.get_fit);
@@ -222,15 +186,34 @@ export default async function HeutePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {nextDay ? (
-              <div className="rounded-[var(--radius-sm)] border border-border bg-surface px-4 py-3.5">
-                <p className="font-display text-base font-semibold text-foreground">
-                  {nextDay.title}
-                </p>
-                <p className="mt-0.5 text-sm text-muted">
-                  {nextDay.focus} · {exerciseCounts.get(nextDay.id) ?? 0}{" "}
-                  Übungen · ca. {nextDay.estMinutes} Min.
-                </p>
-              </div>
+              <>
+                <div className="rounded-[var(--radius-sm)] border border-border bg-surface px-4 py-3.5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">
+                    Heute sinnvoll
+                  </p>
+                  <p className="mt-1 font-display text-base font-semibold text-foreground">
+                    {nextDay.title}
+                  </p>
+                  <p className="mt-0.5 text-sm text-muted">
+                    {[
+                      nextDay.focus,
+                      `${nextDay.exercises.length} Übungen`,
+                      nextDay.estMinutes != null
+                        ? `ca. ${nextDay.estMinutes} Min.`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
+                <Link
+                  href={`/training#day-${nextDay.dayIndex}`}
+                  className={buttonVariants({ variant: "secondary", size: "md" })}
+                >
+                  Workout ansehen
+                  <ArrowRight className="size-4" />
+                </Link>
+              </>
             ) : (
               <div className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface/40 px-4 py-6 text-center text-sm text-dim">
                 Kein Plan gefunden — starte das Onboarding erneut.
@@ -239,12 +222,13 @@ export default async function HeutePage() {
             {days.length > 1 && (
               <div className="flex flex-wrap gap-2">
                 {days.map((day) => (
-                  <span
+                  <Link
                     key={day.id}
-                    className="rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted"
+                    href={`/training#day-${day.dayIndex}`}
+                    className="rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
                   >
-                    {day.title} · {exerciseCounts.get(day.id) ?? 0} Üb.
-                  </span>
+                    {day.title} · {day.exercises.length} Üb.
+                  </Link>
                 ))}
               </div>
             )}

@@ -29,6 +29,12 @@ values
   ('db-row',           'Kurzhantelrudern',         'back',      'dumbbell',    'both', 'beginner',     true,  'Eine Hand abgestützt, Kurzhantel zur Hüfte ziehen, Schulter zurück.'),
   ('pull-up',          'Klimmzug',                 'back',      'bodyweight',  'both', 'advanced',     true,  'Aus dem Hang Brust Richtung Stange ziehen, kontrolliert ablassen.'),
 
+  -- Rücken / Zug für Zuhause ohne Geräte (Körpergewicht)
+  ('superman',         'Superman',                 'back',      'bodyweight',  'home', 'beginner',     false, 'Bauchlage, Arme und Beine gleichzeitig leicht anheben, kurz halten, kontrolliert senken.'),
+  ('reverse-snow-angel','Reverse Snow Angels',     'back',      'bodyweight',  'home', 'beginner',     false, 'Bauchlage, Arme dicht über dem Boden vom Kopf zur Hüfte führen, Schulterblätter zusammenziehen.'),
+  ('prone-y-raise',    'Prone Y-Raises',           'back',      'bodyweight',  'home', 'beginner',     false, 'Bauchlage, Arme in Y-Form nach vorn-oben anheben, Daumen zeigen nach oben, kurz halten.'),
+  ('inverted-row-table','Umgekehrtes Rudern (Tisch)','back',     'bodyweight',  'home', 'beginner',     true,  'Unter einem stabilen Tisch liegen, Kante greifen, Brust zur Kante ziehen, Körper gerade halten.'),
+
   -- Arme
   ('db-curl',          'Bizeps-Curl (KH)',         'biceps',    'dumbbell',    'both', 'beginner',     false, 'Ellbogen fix am Körper, Kurzhanteln kontrolliert nach oben curlen.'),
   ('triceps-dip',      'Trizeps-Dip (Bank)',       'triceps',   'bodyweight',  'home', 'beginner',     false, 'Hände auf Bank, Körper absenken, über die Trizeps hochdrücken.'),
