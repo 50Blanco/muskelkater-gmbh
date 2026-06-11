@@ -41,7 +41,7 @@ export function DesktopSidebar() {
         })}
       </nav>
 
-      <div className="px-3 text-xs text-dim">v0.1 · Phase 1</div>
+      <div className="px-3 text-xs text-dim">v0.4 · MVP</div>
     </aside>
   );
 }

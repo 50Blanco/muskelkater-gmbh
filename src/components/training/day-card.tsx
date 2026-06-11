@@ -5,6 +5,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import type { PlanDay } from "@/lib/training/get-active-plan";
+import { StartWorkoutButton } from "@/components/workout/start-workout-button";
 import { ExerciseRow } from "./exercise-row";
 
 interface DayCardProps {
@@ -58,11 +59,19 @@ export function DayCard({ day, highlight = false }: DayCardProps) {
             Für diesen Tag wurden keine Übungen hinterlegt.
           </p>
         ) : (
-          <ul className="space-y-2">
-            {day.exercises.map((ex, index) => (
-              <ExerciseRow key={ex.id} ex={ex} position={index + 1} />
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-2">
+              {day.exercises.map((ex, index) => (
+                <ExerciseRow key={ex.id} ex={ex} position={index + 1} />
+              ))}
+            </ul>
+            <div className="mt-4">
+              <StartWorkoutButton
+                dayId={day.id}
+                variant={highlight ? "primary" : "secondary"}
+              />
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
