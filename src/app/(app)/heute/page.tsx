@@ -1,7 +1,30 @@
 import type { Metadata } from "next";
-import { Dumbbell, Flame, Sparkles, Target } from "lucide-react";
+import {
+  ArrowRight,
+  Circle,
+  CheckCircle2,
+  Droplets,
+  Dumbbell,
+  Flame,
+  Moon,
+  Sparkles,
+} from "lucide-react";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
+import { db } from "@/db";
+import {
+  coachRecommendation,
+  dailyMission,
+  fitnessGoal,
+  nutritionTarget,
+  userProfile,
+  workoutDay,
+  workoutDayExercise,
+  workoutPlan,
+} from "@/db/schema";
+import { restartOnboarding } from "@/app/(onboarding)/actions";
 import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -11,10 +34,32 @@ import {
 
 export const metadata: Metadata = { title: "Heute" };
 
-function greetingName(email?: string | null): string {
-  if (!email) return "Athlet";
-  const handle = email.split("@")[0] ?? "Athlet";
-  return handle.charAt(0).toUpperCase() + handle.slice(1);
+const GOAL_LABELS: Record<string, string> = {
+  build_muscle: "Muskeln aufbauen",
+  lose_fat: "Fett verlieren",
+  get_fit: "Fitter werden",
+  strength: "Stärker werden",
+  maintain: "Gewicht halten",
+};
+
+/** Statische, regelbasierte Coach-Hinweise (Phase 7 bringt die echte Engine). */
+const COACH_TIPS: Record<string, string> = {
+  build_muscle:
+    "Konstanz schlägt Intensität: Lieber jede Woche alle Einheiten sauber durchziehen als einmal alles geben.",
+  lose_fat:
+    "Dein Defizit ist moderat geplant — bleib geduldig. Protein und Schlaf machen den Unterschied.",
+  get_fit:
+    "Fang locker an und steigere dich langsam. Der beste Plan ist der, den du durchhältst.",
+  strength:
+    "Technik vor Gewicht: Saubere Wiederholungen bringen dich schneller voran als schwere, unsaubere.",
+  maintain:
+    "Routine ist dein Werkzeug: Gleiche Trainingstage jede Woche machen das Halten fast automatisch.",
+};
+
+function formatLiters(waterMl: number): string {
+  return `${(waterMl / 1000).toLocaleString("de-DE", {
+    maximumFractionDigits: 1,
+  })} l`;
 }
 
 export default async function HeutePage() {
@@ -22,102 +67,296 @@ export default async function HeutePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) return null; // Layout/Proxy sichern die Route bereits ab.
 
-  const today = new Intl.DateTimeFormat("de-DE", {
+  const todayLabel = new Intl.DateTimeFormat("de-DE", {
     weekday: "long",
     day: "numeric",
     month: "long",
   }).format(new Date());
+  const todayIso = new Date().toLocaleDateString("en-CA");
+
+  const [profile] = await db
+    .select()
+    .from(userProfile)
+    .where(eq(userProfile.userId, user.id))
+    .limit(1);
+
+  /* Alt-Nutzer des Phase-1-Platzhalters: Flag gesetzt, aber kein Profil. */
+  if (!profile?.onboardingCompletedAt) {
+    return (
+      <div className="space-y-8">
+        <PageHeader
+          eyebrow={todayLabel}
+          title="Servus."
+          subtitle="Ein Schritt fehlt noch, bevor es losgeht."
+        />
+        <Card>
+          <CardHeader>
+            <CardTitle>Dein Profil ist noch nicht eingerichtet</CardTitle>
+            <p className="text-sm text-muted">
+              Beantworte ein paar kurze Fragen — danach erstellen wir deinen
+              ersten Trainingsplan und deine Ernährungsziele.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <form action={restartOnboarding}>
+              <Button type="submit" size="lg">
+                Onboarding starten
+                <ArrowRight className="size-4" />
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const [[goal], [target], [plan], missions, [recommendation]] =
+    await Promise.all([
+      db
+        .select()
+        .from(fitnessGoal)
+        .where(
+          and(eq(fitnessGoal.userId, user.id), eq(fitnessGoal.active, true)),
+        )
+        .orderBy(desc(fitnessGoal.createdAt))
+        .limit(1),
+      db
+        .select()
+        .from(nutritionTarget)
+        .where(
+          and(
+            eq(nutritionTarget.userId, user.id),
+            eq(nutritionTarget.active, true),
+          ),
+        )
+        .orderBy(desc(nutritionTarget.createdAt))
+        .limit(1),
+      db
+        .select()
+        .from(workoutPlan)
+        .where(
+          and(eq(workoutPlan.userId, user.id), eq(workoutPlan.active, true)),
+        )
+        .orderBy(desc(workoutPlan.createdAt))
+        .limit(1),
+      db
+        .select()
+        .from(dailyMission)
+        .where(
+          and(
+            eq(dailyMission.userId, user.id),
+            eq(dailyMission.missionDate, todayIso),
+          ),
+        )
+        .orderBy(asc(dailyMission.createdAt)),
+      db
+        .select()
+        .from(coachRecommendation)
+        .where(
+          and(
+            eq(coachRecommendation.userId, user.id),
+            eq(coachRecommendation.dismissed, false),
+          ),
+        )
+        .orderBy(desc(coachRecommendation.createdAt))
+        .limit(1),
+    ]);
+
+  const days = plan
+    ? await db
+        .select()
+        .from(workoutDay)
+        .where(eq(workoutDay.planId, plan.id))
+        .orderBy(asc(workoutDay.dayIndex))
+    : [];
+
+  const dayIds = days.map((d) => d.id);
+  const dayExercises =
+    dayIds.length > 0
+      ? await db
+          .select({ workoutDayId: workoutDayExercise.workoutDayId })
+          .from(workoutDayExercise)
+          .where(inArray(workoutDayExercise.workoutDayId, dayIds))
+      : [];
+  const exerciseCounts = new Map<string, number>();
+  for (const row of dayExercises) {
+    exerciseCounts.set(
+      row.workoutDayId,
+      (exerciseCounts.get(row.workoutDayId) ?? 0) + 1,
+    );
+  }
+
+  const nextDay = days[0];
+  const goalLabel = goal ? GOAL_LABELS[goal.goalType] : null;
+  const coachMessage =
+    recommendation?.message ??
+    (goal ? COACH_TIPS[goal.goalType] : COACH_TIPS.get_fit);
 
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow={today}
-        title={`Servus, ${greetingName(user?.email)}.`}
-        subtitle="Dein nächster sinnvoller Schritt — sobald dein Plan steht."
+        eyebrow={todayLabel}
+        title={`Servus, ${profile.displayName ?? "Athlet"}.`}
+        subtitle={
+          goalLabel
+            ? `Ziel: ${goalLabel} — dein Plan ist bereit.`
+            : "Dein Plan ist bereit."
+        }
       />
 
-      {/* Bento-Skelett für das spätere Dashboard */}
       <div className="grid gap-4 sm:grid-cols-2">
+        {/* Trainingsplan */}
         <Card className="sm:col-span-2">
           <CardHeader className="flex-row items-center gap-3">
             <span className="grid size-10 place-items-center rounded-[12px] bg-accent text-accent-foreground">
               <Dumbbell className="size-5" />
             </span>
             <div>
-              <CardTitle>Heutiges Workout</CardTitle>
+              <CardTitle>Nächstes Workout</CardTitle>
               <p className="text-sm text-muted">
-                Wird nach dem Onboarding automatisch geplant.
+                {plan ? plan.name : "Noch kein aktiver Plan."}
               </p>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface/40 px-4 py-8 text-center text-sm text-dim">
-              Noch kein Plan — kommt in Phase 3.
-            </div>
+          <CardContent className="space-y-4">
+            {nextDay ? (
+              <div className="rounded-[var(--radius-sm)] border border-border bg-surface px-4 py-3.5">
+                <p className="font-display text-base font-semibold text-foreground">
+                  {nextDay.title}
+                </p>
+                <p className="mt-0.5 text-sm text-muted">
+                  {nextDay.focus} · {exerciseCounts.get(nextDay.id) ?? 0}{" "}
+                  Übungen · ca. {nextDay.estMinutes} Min.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface/40 px-4 py-6 text-center text-sm text-dim">
+                Kein Plan gefunden — starte das Onboarding erneut.
+              </div>
+            )}
+            {days.length > 1 && (
+              <div className="flex flex-wrap gap-2">
+                {days.map((day) => (
+                  <span
+                    key={day.id}
+                    className="rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted"
+                  >
+                    {day.title} · {exerciseCounts.get(day.id) ?? 0} Üb.
+                  </span>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <StatTile
-          icon={<Flame className="size-5" />}
-          title="Ernährung"
-          hint="Kalorien · Protein · Wasser"
-          phase="Phase 5"
-        />
-        <StatTile
-          icon={<Target className="size-5" />}
-          title="Gewohnheiten"
-          hint="Tägliche Streaks"
-          phase="Phase 5"
-        />
+        {/* Heutige Missionen */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Heutige Missionen</CardTitle>
+            <p className="text-xs text-muted">
+              Abhaken kommt in den nächsten Phasen.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {missions.length === 0 ? (
+              <p className="text-sm text-dim">
+                Für heute sind keine Missionen angelegt.
+              </p>
+            ) : (
+              missions.map((mission) => (
+                <div
+                  key={mission.id}
+                  className="flex items-start gap-3 rounded-[var(--radius-sm)] border border-border bg-surface px-3.5 py-2.5"
+                >
+                  {mission.status === "done" ? (
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
+                  ) : (
+                    <Circle className="mt-0.5 size-4 shrink-0 text-dim" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {mission.title}
+                    </p>
+                    {mission.description && (
+                      <p className="text-xs text-muted">
+                        {mission.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Ernährungsziele */}
+        <Card>
+          <CardHeader className="flex-row items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-[12px] bg-surface-3 text-muted">
+              <Flame className="size-5" />
+            </span>
+            <div>
+              <CardTitle className="text-base">Ernährungsziele</CardTitle>
+              <p className="text-xs text-muted">Dein täglicher Rahmen.</p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {target ? (
+              <dl className="space-y-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-sm text-muted">Kalorien</dt>
+                  <dd className="font-display text-sm font-semibold text-foreground">
+                    {target.caloriesKcal.toLocaleString("de-DE")} kcal
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-sm text-muted">Protein</dt>
+                  <dd className="font-display text-sm font-semibold text-foreground">
+                    {target.proteinG} g
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="flex items-center gap-1.5 text-sm text-muted">
+                    <Droplets className="size-3.5" /> Wasser
+                  </dt>
+                  <dd className="font-display text-sm font-semibold text-foreground">
+                    {formatLiters(target.waterMl)}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="text-sm text-dim">Noch keine Ziele berechnet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Coach */}
         <Card className="sm:col-span-2">
           <CardHeader className="flex-row items-center gap-3">
             <span className="grid size-10 place-items-center rounded-[12px] bg-accent-soft text-accent">
               <Sparkles className="size-5" />
             </span>
             <div>
-              <CardTitle>Coach</CardTitle>
-              <p className="text-sm text-muted">
-                Kurze, klare Empfehlungen — regelbasiert.
+              <CardTitle className="text-base">Coach</CardTitle>
+              <p className="text-xs text-muted">
+                Kurz und ehrlich — regelbasiert.
               </p>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface/40 px-4 py-6 text-center text-sm text-dim">
-              Der Coach meldet sich ab Phase 7.
-            </div>
+            <p className="text-sm leading-relaxed text-foreground">
+              {coachMessage}
+            </p>
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-dim">
+              <Moon className="size-3.5" />
+              Erholung zählt mit: Plane mindestens einen trainingsfreien Tag
+              zwischen harten Einheiten.
+            </p>
           </CardContent>
         </Card>
       </div>
     </div>
-  );
-}
-
-function StatTile({
-  icon,
-  title,
-  hint,
-  phase,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  hint: string;
-  phase: string;
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex-row items-center gap-3">
-        <span className="grid size-10 place-items-center rounded-[12px] bg-surface-3 text-muted">
-          {icon}
-        </span>
-        <div>
-          <CardTitle className="text-base">{title}</CardTitle>
-          <p className="text-xs text-muted">{hint}</p>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-xs text-dim">Aktiv ab {phase}.</p>
-      </CardContent>
-    </Card>
   );
 }
