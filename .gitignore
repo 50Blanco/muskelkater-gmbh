@@ -1,0 +1,11 @@
+# Claude Code Konfiguration (nicht veröffentlichen)
+.claude/
+
+# Arbeitsdateien für das Logo (das Logo ist bereits in index.html eingebettet)
+assets/
+
+# Node
+node_modules/
+
+# Logs
+*.log
