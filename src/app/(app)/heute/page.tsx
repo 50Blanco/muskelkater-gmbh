@@ -8,6 +8,7 @@ import {
   Flame,
   Moon,
   Sparkles,
+  Utensils,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -16,12 +17,18 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
 import {
   coachRecommendation,
+  dailyHabitLog,
   dailyMission,
+  dailyNutritionLog,
   fitnessGoal,
+  habit,
   nutritionTarget,
   userProfile,
   workoutSession,
 } from "@/db/schema";
+import { getTodayBerlin } from "@/lib/utils/date";
+import { getProgressPct } from "@/lib/validation/nutrition";
+import { HabitList } from "@/components/habits/habit-list";
 import { getActiveTrainingPlan } from "@/lib/training/get-active-plan";
 import { selectNextDay } from "@/lib/plan/select-next-day";
 import { GOAL_TYPE_LABELS } from "@/lib/training/labels";
@@ -71,6 +78,7 @@ export default async function HeutePage() {
     month: "long",
   }).format(new Date());
   const todayIso = new Date().toLocaleDateString("en-CA");
+  const todayBerlin = getTodayBerlin();
 
   const [profile] = await db
     .select()
@@ -163,6 +171,37 @@ export default async function HeutePage() {
         .orderBy(desc(workoutSession.completedAt))
         .limit(1),
     ]);
+
+  // Phase-5-Queries (Berlin-TZ) — getrennt, um bestehende Destructuring nicht zu berühren.
+  const [[todayNutritionLog], activeHabits, todayHabitLogs] = await Promise.all([
+    db
+      .select({
+        proteinG: dailyNutritionLog.proteinG,
+        waterMl: dailyNutritionLog.waterMl,
+      })
+      .from(dailyNutritionLog)
+      .where(
+        and(
+          eq(dailyNutritionLog.userId, user.id),
+          eq(dailyNutritionLog.logDate, todayBerlin),
+        ),
+      )
+      .limit(1),
+    db
+      .select({ id: habit.id, name: habit.name, icon: habit.icon })
+      .from(habit)
+      .where(and(eq(habit.userId, user.id), eq(habit.active, true)))
+      .orderBy(asc(habit.createdAt)),
+    db
+      .select({ habitId: dailyHabitLog.habitId, completed: dailyHabitLog.completed })
+      .from(dailyHabitLog)
+      .where(
+        and(
+          eq(dailyHabitLog.userId, user.id),
+          eq(dailyHabitLog.logDate, todayBerlin),
+        ),
+      ),
+  ]);
 
   const days = plan?.days ?? [];
   const nextDay = selectNextDay(days);
@@ -352,6 +391,85 @@ export default async function HeutePage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Ernährung heute — Fortschritt */}
+        {target && (
+          <Card>
+            <CardHeader className="flex-row items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-[12px] bg-surface-3 text-muted">
+                <Utensils className="size-5" />
+              </span>
+              <div>
+                <CardTitle className="text-base">Ernährung heute</CardTitle>
+                <p className="text-xs text-muted">Dein Tagesfortschritt.</p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <dl className="space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-baseline justify-between">
+                    <dt className="text-sm text-muted">Protein</dt>
+                    <dd className="text-sm font-semibold text-foreground">
+                      {todayNutritionLog?.proteinG ?? 0} / {target.proteinG} g
+                    </dd>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
+                    <div
+                      className="h-1.5 rounded-full bg-accent"
+                      style={{
+                        width: `${getProgressPct(todayNutritionLog?.proteinG ?? 0, target.proteinG)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-baseline justify-between">
+                    <dt className="flex items-center gap-1.5 text-sm text-muted">
+                      <Droplets className="size-3.5" /> Wasser
+                    </dt>
+                    <dd className="text-sm font-semibold text-foreground">
+                      {formatLiters(todayNutritionLog?.waterMl ?? 0)} / {formatLiters(target.waterMl)}
+                    </dd>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
+                    <div
+                      className="h-1.5 rounded-full bg-accent"
+                      style={{
+                        width: `${getProgressPct(todayNutritionLog?.waterMl ?? 0, target.waterMl)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </dl>
+              <Link
+                href="/ernaehrung"
+                className="mt-3 inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
+              >
+                Zur Ernährungsseite <ArrowRight className="size-3" />
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Gewohnheiten */}
+        {activeHabits.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Gewohnheiten</CardTitle>
+              <p className="text-xs text-muted">Heute erledigt?</p>
+            </CardHeader>
+            <CardContent>
+              <HabitList
+                habits={activeHabits.map((h) => ({
+                  ...h,
+                  completed:
+                    todayHabitLogs.find((l) => l.habitId === h.id)?.completed ??
+                    false,
+                }))}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Coach */}
         <Card className="sm:col-span-2">
