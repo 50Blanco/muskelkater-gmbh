@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { DISCLAIMER_TEXT } from "@/lib/safety/disclaimer";
@@ -8,6 +9,9 @@ import { OptionCard } from "./option-card";
 import type { StepProps } from "./wizard-state";
 
 export function StepSafety({ state, update }: StepProps) {
+  // Rein visuelle Markierung; verhält sich wie "keine Einschränkungen".
+  const [isRachid, setIsRachid] = useState(false);
+
   const symptoms = state.hasLimitations
     ? detectDangerSymptoms(state.limitations)
     : [];
@@ -18,16 +22,31 @@ export function StepSafety({ state, update }: StepProps) {
         <Label>Hast du Verletzungen oder Einschränkungen?</Label>
         <div className="grid gap-2">
           <OptionCard
-            selected={state.hasLimitations === false}
-            onSelect={() => update({ hasLimitations: false, limitations: "" })}
+            selected={state.hasLimitations === false && !isRachid}
+            onSelect={() => {
+              setIsRachid(false);
+              update({ hasLimitations: false, limitations: "" });
+            }}
             title="Nein"
             description="Keine bekannten Einschränkungen."
           />
           <OptionCard
             selected={state.hasLimitations === true}
-            onSelect={() => update({ hasLimitations: true })}
+            onSelect={() => {
+              setIsRachid(false);
+              update({ hasLimitations: true });
+            }}
             title="Ja"
             description="Ich beschreibe es kurz."
+          />
+          <OptionCard
+            selected={isRachid}
+            onSelect={() => {
+              setIsRachid(true);
+              update({ hasLimitations: false, limitations: "" });
+            }}
+            title="Ich bin Rachid"
+            description="Training? - Was?"
           />
         </div>
       </div>

@@ -1,4 +1,4 @@
-# Muskelkater — Fitness-App
+# MUSKELKATER GMBH — Fitness-App
 
 Dein Coach in der Hosentasche. Moderne Fitness-App, die täglich klar führt:
 Training, Ernährung, Gewohnheiten, Fortschritt und ein regelbasierter Coach.

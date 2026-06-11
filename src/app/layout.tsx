@@ -20,8 +20,8 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: {
-    default: "Muskelkater — dein Coach in der Hosentasche",
-    template: "%s · Muskelkater",
+    default: "MUSKELKATER GMBH — dein Coach in der Hosentasche",
+    template: "%s · MUSKELKATER GMBH",
   },
   description:
     "Moderne Fitness-App, die dich täglich klar führt: Training, Ernährung, Gewohnheiten und ein Coach, der den nächsten sinnvollen Schritt zeigt.",
