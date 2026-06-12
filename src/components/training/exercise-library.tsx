@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Search, SlidersHorizontal } from "lucide-react";
 import {
+  buildFilterSearchParams,
   EMPTY_FILTERS,
   extractEquipment,
   extractMuscleGroups,
-  filterExercises,
-  sortExercises,
+  hasActiveFilters,
   type ExerciseFilters,
   type LibraryExercise,
 } from "@/lib/training/exercise-filters";
@@ -38,38 +39,55 @@ function FilterChip({ label, active, onClick }: FilterChipProps) {
 }
 
 interface ExerciseLibraryProps {
-  exercises: LibraryExercise[];
+  /** Vollständige sortierte Liste — für Filter-Options-Extraktion. */
+  allExercises: LibraryExercise[];
+  /** Bereits server-seitig gefilterte Liste — wird direkt gerendert. */
+  filteredExercises: LibraryExercise[];
+  /** Aktive Filter aus URL-Params (angewendeter Zustand). */
+  currentFilters: ExerciseFilters;
 }
 
-export function ExerciseLibrary({ exercises }: ExerciseLibraryProps) {
-  const [filters, setFilters] = useState<ExerciseFilters>(EMPTY_FILTERS);
-  const [showFilters, setShowFilters] = useState(false);
+export function ExerciseLibrary({
+  allExercises,
+  filteredExercises,
+  currentFilters,
+}: ExerciseLibraryProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
-  const muscleGroups = useMemo(() => extractMuscleGroups(exercises), [exercises]);
-  const equipmentOptions = useMemo(() => extractEquipment(exercises), [exercises]);
+  // "pending" = was der Nutzer im Panel ausgewählt hat, aber noch nicht angewendet hat.
+  // Komponente wird via key={filtersKey} in page.tsx neu gemountet wenn URL-Filter wechseln —
+  // deshalb initialisiert useState direkt aus currentFilters und kein useEffect nötig.
+  const [pending, setPending] = useState<ExerciseFilters>(currentFilters);
+  const [showFilters, setShowFilters] = useState(() => hasActiveFilters(currentFilters));
 
-  const results = useMemo(
-    () => sortExercises(filterExercises(exercises, filters)),
-    [exercises, filters],
-  );
+  const muscleGroups = useMemo(() => extractMuscleGroups(allExercises), [allExercises]);
+  const equipmentOptions = useMemo(() => extractEquipment(allExercises), [allExercises]);
 
   function setFilter<K extends keyof ExerciseFilters>(key: K, value: string) {
-    setFilters((prev) => ({
+    setPending((prev) => ({
       ...prev,
       [key]: prev[key] === value ? "" : value,
     }));
   }
 
-  function clearFilters() {
-    setFilters(EMPTY_FILTERS);
+  function handleApply() {
+    const params = buildFilterSearchParams(pending);
+    const qs = params.toString();
+    startTransition(() => {
+      router.push(qs ? `/training/uebungen?${qs}` : "/training/uebungen");
+    });
   }
 
-  const hasActiveFilters =
-    filters.search ||
-    filters.muscleGroup ||
-    filters.location ||
-    filters.equipment ||
-    filters.level;
+  function handleReset() {
+    startTransition(() => {
+      router.push("/training/uebungen");
+    });
+    setShowFilters(false);
+  }
+
+  const pendingDirty = hasActiveFilters(pending);
+  const appliedActive = hasActiveFilters(currentFilters);
 
   return (
     <div className="space-y-4">
@@ -78,14 +96,14 @@ export function ExerciseLibrary({ exercises }: ExerciseLibraryProps) {
         <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-dim" />
         <input
           type="search"
-          value={filters.search}
-          onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+          value={pending.search}
+          onChange={(e) => setPending((prev) => ({ ...prev, search: e.target.value }))}
           placeholder="Übung suchen …"
           className="w-full rounded-[var(--radius)] border border-border bg-surface py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-dim focus-visible:border-accent focus-visible:outline-none"
         />
       </div>
 
-      {/* Filter-Toggle */}
+      {/* Filter-Toggle + Zurücksetzen */}
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"
@@ -94,26 +112,27 @@ export function ExerciseLibrary({ exercises }: ExerciseLibraryProps) {
         >
           <SlidersHorizontal className="size-4" />
           Filter
-          {hasActiveFilters && (
+          {appliedActive && (
             <span className="grid size-5 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
               !
             </span>
           )}
         </button>
-        {hasActiveFilters && (
+        {appliedActive && (
           <button
             type="button"
-            onClick={clearFilters}
-            className="text-xs text-accent hover:underline"
+            onClick={handleReset}
+            disabled={isPending}
+            className="text-xs text-accent hover:underline disabled:opacity-60"
           >
-            Alle zurücksetzen
+            Zurücksetzen
           </button>
         )}
       </div>
 
-      {/* Filter-Chips */}
+      {/* Filter-Panel */}
       {showFilters && (
-        <div className="space-y-3 rounded-[var(--radius)] border border-border bg-surface/60 p-4">
+        <div className="space-y-4 rounded-[var(--radius)] border border-border bg-surface/60 p-4">
           {/* Muskelgruppe */}
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-dim">Muskelgruppe</p>
@@ -122,7 +141,7 @@ export function ExerciseLibrary({ exercises }: ExerciseLibraryProps) {
                 <FilterChip
                   key={mg}
                   label={MUSCLE_GROUP_LABELS[mg] ?? mg}
-                  active={filters.muscleGroup === mg}
+                  active={pending.muscleGroup === mg}
                   onClick={() => setFilter("muscleGroup", mg)}
                 />
               ))}
@@ -137,7 +156,7 @@ export function ExerciseLibrary({ exercises }: ExerciseLibraryProps) {
                 <FilterChip
                   key={loc}
                   label={LOCATION_LABELS[loc]}
-                  active={filters.location === loc}
+                  active={pending.location === loc}
                   onClick={() => setFilter("location", loc)}
                 />
               ))}
@@ -153,7 +172,7 @@ export function ExerciseLibrary({ exercises }: ExerciseLibraryProps) {
                   <FilterChip
                     key={eq}
                     label={eq}
-                    active={filters.equipment === eq}
+                    active={pending.equipment === eq}
                     onClick={() => setFilter("equipment", eq)}
                   />
                 ))}
@@ -169,29 +188,50 @@ export function ExerciseLibrary({ exercises }: ExerciseLibraryProps) {
                 <FilterChip
                   key={lvl}
                   label={LEVEL_LABELS[lvl]}
-                  active={filters.level === lvl}
+                  active={pending.level === lvl}
                   onClick={() => setFilter("level", lvl)}
                 />
               ))}
             </div>
+          </div>
+
+          {/* Aktions-Buttons */}
+          <div className="flex items-center gap-3 border-t border-border pt-3">
+            <button
+              type="button"
+              onClick={handleApply}
+              disabled={isPending}
+              className="rounded-[var(--radius-sm)] bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+            >
+              {isPending ? "Lädt …" : "Filter anwenden"}
+            </button>
+            {pendingDirty && (
+              <button
+                type="button"
+                onClick={() => setPending(EMPTY_FILTERS)}
+                className="text-xs text-muted hover:text-foreground transition-colors"
+              >
+                Auswahl löschen
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {/* Ergebnis-Count */}
       <p className="text-xs text-dim">
-        {results.length} {results.length === 1 ? "Übung" : "Übungen"}
-        {hasActiveFilters ? " gefunden" : " gesamt"}
+        {filteredExercises.length} {filteredExercises.length === 1 ? "Übung" : "Übungen"}
+        {appliedActive ? " gefunden" : " gesamt"}
       </p>
 
       {/* Liste */}
-      {results.length === 0 ? (
+      {filteredExercises.length === 0 ? (
         <div className="rounded-[var(--radius)] border border-dashed border-border bg-surface/40 px-4 py-12 text-center">
           <p className="text-sm font-medium text-foreground">Keine Übungen gefunden</p>
           <p className="mt-1 text-xs text-muted">Passe die Filter an oder setze die Suche zurück.</p>
           <button
             type="button"
-            onClick={clearFilters}
+            onClick={handleReset}
             className="mt-3 text-xs text-accent hover:underline"
           >
             Filter zurücksetzen
@@ -199,7 +239,7 @@ export function ExerciseLibrary({ exercises }: ExerciseLibraryProps) {
         </div>
       ) : (
         <ul className="space-y-2">
-          {results.map((ex) => (
+          {filteredExercises.map((ex) => (
             <li key={ex.uid}>
               <ExerciseCard exercise={ex} />
             </li>

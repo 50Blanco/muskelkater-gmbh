@@ -16,6 +16,8 @@ import {
 
 export interface PlanExercise {
   id: string;
+  /** Echte exercise.id aus dem globalen Katalog — für Link zu /training/uebungen/g_<exerciseId>. */
+  exerciseId: string;
   order: number;
   targetSets: number | null;
   targetReps: number | null;
@@ -70,6 +72,7 @@ export async function getActiveTrainingPlan(
           .select({
             workoutDayId: workoutDayExercise.workoutDayId,
             id: workoutDayExercise.id,
+            exerciseId: exercise.id,
             order: workoutDayExercise.order,
             targetSets: workoutDayExercise.targetSets,
             targetReps: workoutDayExercise.targetReps,
@@ -99,6 +102,7 @@ export async function getActiveTrainingPlan(
     const list = exercisesByDay.get(row.workoutDayId) ?? [];
     list.push({
       id: row.id,
+      exerciseId: row.exerciseId,
       order: row.order,
       targetSets: row.targetSets,
       targetReps: row.targetReps,

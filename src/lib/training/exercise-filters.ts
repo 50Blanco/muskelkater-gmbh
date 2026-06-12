@@ -82,3 +82,42 @@ export function sortExercises(exercises: LibraryExercise[]): LibraryExercise[] {
     return a.name.localeCompare(b.name, "de");
   });
 }
+
+/** Baut URLSearchParams aus einem ExerciseFilters-Objekt. Leere Werte werden ausgelassen. */
+export function buildFilterSearchParams(filters: ExerciseFilters): URLSearchParams {
+  const params = new URLSearchParams();
+  if (filters.search) params.set("q", filters.search);
+  if (filters.muscleGroup) params.set("muscle", filters.muscleGroup);
+  if (filters.location) params.set("location", filters.location);
+  if (filters.equipment) params.set("equipment", filters.equipment);
+  if (filters.level) params.set("level", filters.level);
+  return params;
+}
+
+/** Liest ExerciseFilters aus Next.js-searchParams (Record von Server-Component). */
+export function filtersFromSearchParams(
+  sp: Record<string, string | string[] | undefined>,
+): ExerciseFilters {
+  function str(v: string | string[] | undefined): string {
+    if (!v) return "";
+    return Array.isArray(v) ? (v[0] ?? "") : v;
+  }
+  return {
+    search: str(sp.q),
+    muscleGroup: str(sp.muscle),
+    location: str(sp.location),
+    equipment: str(sp.equipment),
+    level: str(sp.level),
+  };
+}
+
+/** Gibt true zurück, wenn mindestens ein Filter aktiv ist. */
+export function hasActiveFilters(filters: ExerciseFilters): boolean {
+  return !!(
+    filters.search ||
+    filters.muscleGroup ||
+    filters.location ||
+    filters.equipment ||
+    filters.level
+  );
+}

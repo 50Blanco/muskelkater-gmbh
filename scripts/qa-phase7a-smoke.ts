@@ -9,6 +9,9 @@ import {
   sortExercises,
   extractMuscleGroups,
   extractEquipment,
+  buildFilterSearchParams,
+  filtersFromSearchParams,
+  hasActiveFilters,
   EMPTY_FILTERS,
   type LibraryExercise,
 } from "../src/lib/training/exercise-filters";
@@ -237,6 +240,111 @@ assert(
 assert(
   "extractEquipment enthält 'Langhantel'",
   extractEquipment(catalog).includes("Langhantel"),
+);
+
+// ── URL-Utilities (FIX 1: Button-basierte Filter) ────────────────────────────
+
+assert(
+  "buildFilterSearchParams: leere Filter → leere Params",
+  buildFilterSearchParams(EMPTY_FILTERS).toString() === "",
+);
+
+assert(
+  "buildFilterSearchParams: search wird als 'q' kodiert",
+  buildFilterSearchParams({ ...EMPTY_FILTERS, search: "bank" }).get("q") === "bank",
+);
+
+assert(
+  "buildFilterSearchParams: alle Filter-Felder korrekt kodiert",
+  (() => {
+    const params = buildFilterSearchParams({
+      search: "",
+      muscleGroup: "chest",
+      location: "gym",
+      equipment: "Langhantel",
+      level: "intermediate",
+    });
+    return (
+      params.get("muscle") === "chest" &&
+      params.get("location") === "gym" &&
+      params.get("equipment") === "Langhantel" &&
+      params.get("level") === "intermediate"
+    );
+  })(),
+);
+
+assert(
+  "filtersFromSearchParams: Roundtrip — encode → decode → gleiche Filter",
+  (() => {
+    const original = {
+      search: "bank",
+      muscleGroup: "chest",
+      location: "gym",
+      equipment: "Langhantel",
+      level: "intermediate",
+    };
+    const params = buildFilterSearchParams(original);
+    const sp: Record<string, string | undefined> = {};
+    params.forEach((v, k) => { sp[k] = v; });
+    const restored = filtersFromSearchParams(sp);
+    return (
+      restored.search === original.search &&
+      restored.muscleGroup === original.muscleGroup &&
+      restored.location === original.location &&
+      restored.equipment === original.equipment &&
+      restored.level === original.level
+    );
+  })(),
+);
+
+assert(
+  "filtersFromSearchParams: leere Params → EMPTY_FILTERS",
+  (() => {
+    const r = filtersFromSearchParams({});
+    return r.search === "" && r.muscleGroup === "" && r.location === "" && r.equipment === "" && r.level === "";
+  })(),
+);
+
+assert(
+  "filtersFromSearchParams: Array-Wert → erster Wert wird genommen",
+  filtersFromSearchParams({ q: ["bank", "knie"] }).search === "bank",
+);
+
+assert(
+  "hasActiveFilters: EMPTY_FILTERS → false",
+  !hasActiveFilters(EMPTY_FILTERS),
+);
+
+assert(
+  "hasActiveFilters: nur search gesetzt → true",
+  hasActiveFilters({ ...EMPTY_FILTERS, search: "bank" }),
+);
+
+assert(
+  "hasActiveFilters: nur muscleGroup gesetzt → true",
+  hasActiveFilters({ ...EMPTY_FILTERS, muscleGroup: "chest" }),
+);
+
+assert(
+  "hasActiveFilters: nur level gesetzt → true",
+  hasActiveFilters({ ...EMPTY_FILTERS, level: "beginner" }),
+);
+
+// ── Übungs-UID für Verlinkung (FIX 2: g_-Präfix) ─────────────────────────────
+
+assert(
+  "Globale Übungen haben uid mit 'g_'-Präfix",
+  catalog.filter((e) => e.source === "global").every((e) => e.uid.startsWith("g_")),
+);
+
+assert(
+  "Custom-Übungen haben uid mit 'c_'-Präfix",
+  catalog.filter((e) => e.source === "custom").every((e) => e.uid.startsWith("c_")),
+);
+
+assert(
+  "Globale UID ergibt korrekten Detail-Link",
+  `/training/uebungen/${catalog[0].uid}` === "/training/uebungen/g_1",
 );
 
 // ── Abschluss ─────────────────────────────────────────────────────────────────
