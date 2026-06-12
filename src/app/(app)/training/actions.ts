@@ -10,10 +10,12 @@ import {
   customExercise,
   dailyMission,
   userExercisePreference,
+  workoutDayExercise,
   workoutSession,
   workoutSet,
 } from "@/db/schema";
 import {
+  addExerciseToWorkoutDaySchema,
   customExerciseSchema,
   finishWorkoutSchema,
 } from "@/lib/validation/workout";
@@ -23,6 +25,13 @@ import {
 } from "@/lib/workout/session-data";
 import { computeDurationMin } from "@/lib/workout/session-helpers";
 import { isPainReason } from "@/lib/workout/reasons";
+import { parseExerciseUid } from "@/lib/training/exercise-uid";
+import {
+  assertOwnsExerciseRef,
+  assertOwnsWorkoutDay,
+  getNextWorkoutDayExerciseOrder,
+} from "@/lib/training/day-edit-ownership";
+import { defaultPrescription } from "@/lib/training/prescription";
 
 /** Lokales Datum als YYYY-MM-DD (für date-Spalten). */
 function localDateString(date = new Date()): string {
@@ -233,6 +242,83 @@ export async function finishWorkout(rawInput: unknown): Promise<ActionResult> {
 
   revalidatePath("/heute");
   revalidatePath("/training");
+  return { ok: true };
+}
+
+/* ------------------------------------------------------------------ */
+/* Übung zu Trainingstag hinzufügen (Phase 7B1)                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Fügt eine globale ODER eigene Übung zu einem Trainingstag hinzu.
+ * Ownership wird serverseitig geprüft (Day über workout_plan, Custom über
+ * custom_exercise.user_id) — RLS allein reicht hier nicht. user_id kommt
+ * immer aus Auth, nie aus dem Client. Read-only auf den globalen Katalog.
+ */
+export async function addExerciseToWorkoutDay(
+  rawInput: unknown,
+): Promise<ActionResult> {
+  const parsed = addExerciseToWorkoutDaySchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+  }
+  const input = parsed.data;
+
+  const ref = parseExerciseUid(input.exerciseUid);
+  if (!ref) return { error: "Ungültige Übungsreferenz." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // Trainingstag muss dem Nutzer gehören (Day → Plan → user_id).
+  const ownsDay = await assertOwnsWorkoutDay(user.id, input.workoutDayId);
+  if (!ownsDay) {
+    return { error: "Dieser Trainingstag wurde nicht gefunden." };
+  }
+
+  // Übungsreferenz prüfen: global = Existenz, custom = eigene Übung.
+  const refCheck = await assertOwnsExerciseRef(user.id, ref);
+  if (!refCheck.ok) {
+    return { error: "Diese Übung ist nicht verfügbar." };
+  }
+
+  // Vorgabe: gesendete Werte ODER sinnvolle Defaults aus Übungstyp.
+  const fallback = defaultPrescription(refCheck.isCompound ?? false);
+  const targetSets = input.targetSets ?? fallback.targetSets;
+  const targetReps = input.targetReps ?? fallback.targetReps;
+  const targetRestSec = input.targetRestSec ?? fallback.targetRestSec;
+
+  try {
+    const order = await getNextWorkoutDayExerciseOrder(
+      user.id,
+      input.workoutDayId,
+    );
+    await db.insert(workoutDayExercise).values({
+      userId: user.id,
+      workoutDayId: input.workoutDayId,
+      // Genau eine Referenz (XOR-CHECK in der DB).
+      exerciseId: ref.kind === "global" ? ref.id : null,
+      customExerciseId: ref.kind === "custom" ? ref.id : null,
+      order,
+      targetSets,
+      targetReps,
+      targetRestSec,
+    });
+  } catch (err) {
+    console.error(
+      "addExerciseToWorkoutDay fehlgeschlagen:",
+      err instanceof Error ? err.message : err,
+    );
+    return {
+      error: "Hinzufügen hat nicht geklappt. Bitte versuche es gleich noch einmal.",
+    };
+  }
+
+  revalidatePath("/training");
+  revalidatePath("/heute");
   return { ok: true };
 }
 

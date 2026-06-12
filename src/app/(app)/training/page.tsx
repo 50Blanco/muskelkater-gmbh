@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { BookOpen, History } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTrainingPlan } from "@/lib/training/get-active-plan";
+import { getExerciseLibrary } from "@/lib/training/exercise-library";
+import { sortExercises } from "@/lib/training/exercise-filters";
 import { selectNextDay } from "@/lib/plan/select-next-day";
 import { getCustomExercises } from "@/lib/workout/session-data";
 import { PageHeader } from "@/components/layout/page-header";
@@ -35,7 +37,10 @@ export default async function TrainingPage() {
   }
 
   const nextDay = selectNextDay(plan.days);
-  const customExercises = await getCustomExercises(user.id);
+  const [customExercises, library] = await Promise.all([
+    getCustomExercises(user.id),
+    getExerciseLibrary(user.id).then(sortExercises),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -61,7 +66,11 @@ export default async function TrainingPage() {
           </Link>
         </div>
       </PageHeader>
-      <PlanOverview plan={plan} highlightDayIndex={nextDay?.dayIndex ?? null} />
+      <PlanOverview
+        plan={plan}
+        highlightDayIndex={nextDay?.dayIndex ?? null}
+        library={library}
+      />
       <CustomExerciseSection customExercises={customExercises} />
     </div>
   );

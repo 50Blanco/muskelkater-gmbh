@@ -17,7 +17,9 @@ import type { SlimExercise } from "@/lib/workout/alternatives";
 
 export interface SessionExercise {
   id: string; // workout_day_exercise id (stabiler Schlüssel)
-  exerciseId: string; // Katalog-Übung
+  kind: "catalog" | "custom";
+  exerciseId: string | null; // Katalog-Übung (null bei custom)
+  customExerciseId: string | null; // eigene Übung (null bei catalog)
   order: number;
   targetSets: number | null;
   targetReps: number | null;
@@ -55,19 +57,34 @@ export async function getWorkoutDayForSession(
     .select({
       id: workoutDayExercise.id,
       exerciseId: workoutDayExercise.exerciseId,
+      customExerciseId: workoutDayExercise.customExerciseId,
       order: workoutDayExercise.order,
       targetSets: workoutDayExercise.targetSets,
       targetReps: workoutDayExercise.targetReps,
       targetRestSec: workoutDayExercise.targetRestSec,
-      name: exercise.name,
-      muscleGroup: exercise.muscleGroup,
-      equipment: exercise.equipment,
-      location: exercise.location,
-      level: exercise.level,
-      instructions: exercise.instructions,
+      gName: exercise.name,
+      gMuscle: exercise.muscleGroup,
+      gEquipment: exercise.equipment,
+      gLocation: exercise.location,
+      gLevel: exercise.level,
+      gInstructions: exercise.instructions,
+      cName: customExercise.name,
+      cMuscle: customExercise.muscleGroup,
+      cEquipment: customExercise.equipment,
+      cLocation: customExercise.location,
+      cLevel: customExercise.level,
+      cInstructions: customExercise.instructions,
     })
     .from(workoutDayExercise)
-    .innerJoin(exercise, eq(workoutDayExercise.exerciseId, exercise.id))
+    .leftJoin(exercise, eq(workoutDayExercise.exerciseId, exercise.id))
+    // Custom-Join zusätzlich user-scoped: fremde Custom-Übungen bleiben unsichtbar.
+    .leftJoin(
+      customExercise,
+      and(
+        eq(workoutDayExercise.customExerciseId, customExercise.id),
+        eq(customExercise.userId, userId),
+      ),
+    )
     .where(
       and(
         eq(workoutDayExercise.workoutDayId, dayId),
@@ -82,20 +99,25 @@ export async function getWorkoutDayForSession(
     title: day.title,
     focus: day.focus,
     estMinutes: day.estMinutes,
-    exercises: rows.map((r) => ({
-      id: r.id,
-      exerciseId: r.exerciseId,
-      order: r.order,
-      targetSets: r.targetSets,
-      targetReps: r.targetReps,
-      targetRestSec: r.targetRestSec,
-      name: r.name,
-      muscleGroup: r.muscleGroup,
-      equipment: r.equipment,
-      location: r.location,
-      level: r.level,
-      instructions: r.instructions,
-    })),
+    exercises: rows.map((r) => {
+      const isCustom = r.customExerciseId !== null;
+      return {
+        id: r.id,
+        kind: isCustom ? ("custom" as const) : ("catalog" as const),
+        exerciseId: r.exerciseId,
+        customExerciseId: r.customExerciseId,
+        order: r.order,
+        targetSets: r.targetSets,
+        targetReps: r.targetReps,
+        targetRestSec: r.targetRestSec,
+        name: (isCustom ? r.cName : r.gName) ?? "Unbekannte Übung",
+        muscleGroup: (isCustom ? r.cMuscle : r.gMuscle) ?? "sonstige",
+        equipment: isCustom ? r.cEquipment : r.gEquipment,
+        location: (isCustom ? r.cLocation : r.gLocation) ?? "both",
+        level: (isCustom ? r.cLevel : r.gLevel) ?? "beginner",
+        instructions: isCustom ? r.cInstructions : r.gInstructions,
+      };
+    }),
   };
 }
 

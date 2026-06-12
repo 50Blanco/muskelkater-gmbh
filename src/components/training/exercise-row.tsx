@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { User } from "lucide-react";
 import {
   formatRest,
   formatSetsReps,
@@ -20,12 +21,20 @@ export function ExerciseRow({ ex, position }: ExerciseRowProps) {
       </span>
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-          <Link
-            href={`/training/uebungen/g_${ex.exerciseId}`}
-            className="font-medium text-foreground hover:text-accent transition-colors"
-          >
-            {ex.name}
-          </Link>
+          <span className="flex items-center gap-1.5">
+            <Link
+              href={`/training/uebungen/${ex.uid}`}
+              className="font-medium text-foreground hover:text-accent transition-colors"
+            >
+              {ex.name}
+            </Link>
+            {ex.source === "custom" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                <User className="size-2.5" />
+                Eigene
+              </span>
+            )}
+          </span>
           <p className="text-sm font-semibold tabular-nums text-foreground">
             {formatSetsReps(ex.targetSets, ex.targetReps)}
           </p>

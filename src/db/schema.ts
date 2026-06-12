@@ -331,9 +331,16 @@ export const workoutDayExercise = pgTable(
     workoutDayId: uuid("workout_day_id")
       .notNull()
       .references(() => workoutDay.id, { onDelete: "cascade" }),
-    exerciseId: uuid("exercise_id")
-      .notNull()
-      .references(() => exercise.id, { onDelete: "restrict" }),
+    // Genau eine Übungsreferenz ist gesetzt: entweder Katalog- oder Custom-Übung
+    // (per CHECK erzwungen, analog zu workout_set). Katalog-Übungen sind global,
+    // Custom-Übungen gehören dem Nutzer.
+    exerciseId: uuid("exercise_id").references(() => exercise.id, {
+      onDelete: "restrict",
+    }),
+    customExerciseId: uuid("custom_exercise_id").references(
+      () => customExercise.id,
+      { onDelete: "cascade" },
+    ),
     order: integer("order").notNull().default(0),
     targetSets: integer("target_sets"),
     targetReps: integer("target_reps"),
@@ -342,6 +349,11 @@ export const workoutDayExercise = pgTable(
   },
   (t) => [
     index("idx_wde_day").on(t.workoutDayId),
+    index("idx_wde_custom_exercise").on(t.customExerciseId),
+    check(
+      "workout_day_exercise_exercise_ref",
+      sql`(${t.exerciseId} is not null) != (${t.customExerciseId} is not null)`,
+    ),
     ownerPolicy("workout_day_exercise", t.userId),
   ],
 );

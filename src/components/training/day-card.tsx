@@ -5,16 +5,19 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import type { PlanDay } from "@/lib/training/get-active-plan";
+import type { LibraryExercise } from "@/lib/training/exercise-filters";
 import { StartWorkoutButton } from "@/components/workout/start-workout-button";
 import { ExerciseRow } from "./exercise-row";
+import { AddExerciseToDay } from "./add-exercise-to-day";
 
 interface DayCardProps {
   day: PlanDay;
   highlight?: boolean;
+  library: LibraryExercise[];
 }
 
 /** Ein Trainingstag als Karte: Titel, Fokus, Dauer, Übungsanzahl + Übungsliste. */
-export function DayCard({ day, highlight = false }: DayCardProps) {
+export function DayCard({ day, highlight = false, library }: DayCardProps) {
   const exerciseCount = day.exercises.length;
 
   return (
@@ -55,9 +58,12 @@ export function DayCard({ day, highlight = false }: DayCardProps) {
       </CardHeader>
       <CardContent>
         {exerciseCount === 0 ? (
-          <p className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface/40 px-4 py-6 text-center text-sm text-dim">
-            Für diesen Tag wurden keine Übungen hinterlegt.
-          </p>
+          <div className="space-y-3">
+            <p className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface/40 px-4 py-6 text-center text-sm text-dim">
+              Für diesen Tag wurden keine Übungen hinterlegt.
+            </p>
+            <AddExerciseToDay workoutDayId={day.id} library={library} />
+          </div>
         ) : (
           <>
             <ul className="space-y-2">
@@ -65,7 +71,8 @@ export function DayCard({ day, highlight = false }: DayCardProps) {
                 <ExerciseRow key={ex.id} ex={ex} position={index + 1} />
               ))}
             </ul>
-            <div className="mt-4">
+            <div className="mt-4 space-y-3">
+              <AddExerciseToDay workoutDayId={day.id} library={library} />
               <StartWorkoutButton
                 dayId={day.id}
                 variant={highlight ? "primary" : "secondary"}

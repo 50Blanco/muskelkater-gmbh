@@ -128,3 +128,29 @@ export const finishWorkoutSchema = z.object({
 export type FinishWorkoutInput = z.infer<typeof finishWorkoutSchema>;
 export type WorkoutSetInput = z.infer<typeof workoutSetInputSchema>;
 export type ExerciseFeedbackInput = z.infer<typeof exerciseFeedbackInputSchema>;
+
+/* ------------------------------------------------------------------ */
+/* Übung zu Trainingstag hinzufügen (Phase 7B1)                       */
+/* ------------------------------------------------------------------ */
+
+/** UID einer Übungsreferenz: "g_<uuid>" (global) oder "c_<uuid>" (custom). */
+const exerciseUidSchema = z
+  .string()
+  .trim()
+  .regex(
+    /^[gc]_[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/,
+    "Ungültige Übungsreferenz.",
+  );
+
+export const addExerciseToWorkoutDaySchema = z.object({
+  workoutDayId: z.uuid("Ungültiger Trainingstag."),
+  exerciseUid: exerciseUidSchema,
+  // Optionale Vorgabe; fehlt sie, setzt der Server sinnvolle Defaults.
+  targetSets: optionalNumber(1, 20),
+  targetReps: optionalNumber(1, 100),
+  targetRestSec: optionalNumber(0, 600),
+});
+
+export type AddExerciseToWorkoutDayInput = z.infer<
+  typeof addExerciseToWorkoutDaySchema
+>;

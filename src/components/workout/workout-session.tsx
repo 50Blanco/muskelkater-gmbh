@@ -39,26 +39,30 @@ function buildSets(count: number): SetState[] {
 }
 
 function initExercises(day: SessionDay): ExerciseState[] {
-  return day.exercises.map((ex) => ({
-    key: `plan-${ex.id}`,
-    kind: "catalog",
-    logExerciseId: ex.exerciseId,
-    logCustomExerciseId: null,
-    feedbackExerciseId: ex.exerciseId,
-    name: ex.name,
-    muscleGroup: ex.muscleGroup,
-    equipment: ex.equipment,
-    location: ex.location,
-    instructions: ex.instructions,
-    targetSets: ex.targetSets,
-    targetReps: ex.targetReps,
-    targetRestSec: ex.targetRestSec,
-    sets: buildSets(ex.targetSets ?? 3),
-    preference: null,
-    reason: null,
-    swappedToName: null,
-    removable: false,
-  }));
+  return day.exercises.map((ex) => {
+    const isCustom = ex.kind === "custom";
+    return {
+      key: `plan-${ex.id}`,
+      kind: ex.kind,
+      logExerciseId: isCustom ? null : ex.exerciseId,
+      logCustomExerciseId: isCustom ? ex.customExerciseId : null,
+      // Feedback nur für Katalog-Übungen (eigene Übungen haben keine Präferenz-Logik).
+      feedbackExerciseId: isCustom ? null : ex.exerciseId,
+      name: ex.name,
+      muscleGroup: ex.muscleGroup,
+      equipment: ex.equipment,
+      location: ex.location,
+      instructions: ex.instructions,
+      targetSets: ex.targetSets,
+      targetReps: ex.targetReps,
+      targetRestSec: ex.targetRestSec,
+      sets: buildSets(ex.targetSets ?? 3),
+      preference: null,
+      reason: null,
+      swappedToName: null,
+      removable: false,
+    };
+  });
 }
 
 function customToState(c: CustomExerciseRow): ExerciseState {
