@@ -49,6 +49,7 @@ export async function createSocialGroup(
   if (!user) redirect("/login");
 
   const inviteCode = generateInviteCode();
+  let groupId = "";
 
   try {
     const [group] = await db
@@ -61,13 +62,15 @@ export async function createSocialGroup(
       userId: user.id,
       role: "owner",
     });
+
+    groupId = group.id;
   } catch (err) {
     console.error("createSocialGroup:", err instanceof Error ? err.message : err);
     return { error: "Gruppe konnte nicht erstellt werden. Bitte versuche es erneut." };
   }
 
   revalidatePath("/heute");
-  return { ok: true, groupId: "", inviteCode };
+  return { ok: true, groupId, inviteCode };
 }
 
 /**
