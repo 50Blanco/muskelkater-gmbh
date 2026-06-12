@@ -68,7 +68,12 @@ export function DayCard({ day, highlight = false, library }: DayCardProps) {
           <>
             <ul className="space-y-2">
               {day.exercises.map((ex, index) => (
-                <ExerciseRow key={ex.id} ex={ex} position={index + 1} />
+                <ExerciseRow
+                  key={ex.id}
+                  ex={ex}
+                  position={index + 1}
+                  library={library}
+                />
               ))}
             </ul>
             <div className="mt-4 space-y-3">

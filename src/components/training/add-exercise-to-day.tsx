@@ -1,16 +1,14 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, Plus, Search, User, X } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { addExerciseToWorkoutDay } from "@/app/(app)/training/actions";
-import { filterExercises, EMPTY_FILTERS } from "@/lib/training/exercise-filters";
 import type { LibraryExercise } from "@/lib/training/exercise-filters";
 import { defaultPrescription } from "@/lib/training/prescription";
-import { MUSCLE_GROUP_LABELS } from "@/lib/training/labels";
 import { MuscleBadge } from "./muscle-badge";
+import { ExerciseSearchPicker } from "./exercise-search-picker";
 
 interface Props {
   workoutDayId: string;
@@ -18,21 +16,13 @@ interface Props {
   library: LibraryExercise[];
 }
 
-const MAX_VISIBLE = 30;
-
 /** Picker zum Hinzufügen einer globalen oder eigenen Übung zu einem Trainingstag. */
 export function AddExerciseToDay({ workoutDayId, library }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<LibraryExercise | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  const results = useMemo(() => {
-    const filtered = filterExercises(library, { ...EMPTY_FILTERS, search });
-    return filtered.slice(0, MAX_VISIBLE);
-  }, [library, search]);
 
   const preview = selected
     ? defaultPrescription(selected.isCompound ?? false)
@@ -40,7 +30,6 @@ export function AddExerciseToDay({ workoutDayId, library }: Props) {
 
   const reset = () => {
     setOpen(false);
-    setSearch("");
     setSelected(null);
     setError(null);
   };
@@ -89,63 +78,11 @@ export function AddExerciseToDay({ workoutDayId, library }: Props) {
         </button>
       </div>
 
-      {/* Suche */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-dim" />
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Übung suchen …"
-          className="w-full rounded-[var(--radius-sm)] border border-border bg-surface py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-dim focus-visible:border-accent focus-visible:outline-none"
-        />
-      </div>
-
-      {/* Trefferliste */}
-      <ul className="max-h-64 space-y-1.5 overflow-y-auto">
-        {results.length === 0 ? (
-          <li className="px-1 py-3 text-center text-xs text-dim">
-            Keine Übung gefunden.
-          </li>
-        ) : (
-          results.map((ex) => {
-            const isSelected = selected?.uid === ex.uid;
-            return (
-              <li key={ex.uid}>
-                <button
-                  type="button"
-                  onClick={() => setSelected(ex)}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-[var(--radius-sm)] border px-3 py-2 text-left transition-colors",
-                    isSelected
-                      ? "border-accent bg-accent-soft"
-                      : "border-border bg-surface hover:bg-surface-3",
-                  )}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-sm font-medium text-foreground">
-                        {ex.name}
-                      </span>
-                      {ex.source === "custom" && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-accent">
-                          <User className="size-2.5" />
-                          Eigene
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-dim">
-                      {MUSCLE_GROUP_LABELS[ex.muscleGroup.trim().toLowerCase()] ??
-                        ex.muscleGroup}
-                    </span>
-                  </div>
-                  {isSelected && <Check className="size-4 shrink-0 text-accent" />}
-                </button>
-              </li>
-            );
-          })
-        )}
-      </ul>
+      <ExerciseSearchPicker
+        library={library}
+        selectedUid={selected?.uid ?? null}
+        onSelect={setSelected}
+      />
 
       {/* Auswahl + Vorschau */}
       {selected && preview && (

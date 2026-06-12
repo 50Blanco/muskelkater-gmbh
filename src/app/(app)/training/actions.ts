@@ -18,6 +18,9 @@ import {
   addExerciseToWorkoutDaySchema,
   customExerciseSchema,
   finishWorkoutSchema,
+  removeWorkoutDayExerciseSchema,
+  replaceWorkoutDayExerciseSchema,
+  updateWorkoutDayExercisePrescriptionSchema,
 } from "@/lib/validation/workout";
 import {
   ensureActiveSession,
@@ -29,6 +32,7 @@ import { parseExerciseUid } from "@/lib/training/exercise-uid";
 import {
   assertOwnsExerciseRef,
   assertOwnsWorkoutDay,
+  assertOwnsWorkoutDayExercise,
   getNextWorkoutDayExerciseOrder,
 } from "@/lib/training/day-edit-ownership";
 import { defaultPrescription } from "@/lib/training/prescription";
@@ -314,6 +318,187 @@ export async function addExerciseToWorkoutDay(
     );
     return {
       error: "Hinzufügen hat nicht geklappt. Bitte versuche es gleich noch einmal.",
+    };
+  }
+
+  revalidatePath("/training");
+  revalidatePath("/heute");
+  return { ok: true };
+}
+
+/* ------------------------------------------------------------------ */
+/* Übung bearbeiten: entfernen · ersetzen · anpassen (Phase 7B Editor) */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Entfernt eine Übung aus einem Trainingstag. Löscht NUR die
+ * `workout_day_exercise`-Zuordnungszeile — niemals die globale Katalog-Übung
+ * oder die eigene Custom-Übung. Ownership über die Kette
+ * workout_day_exercise → workout_day → workout_plan → user_id (Defense-in-Depth).
+ */
+export async function removeWorkoutDayExercise(
+  rawInput: unknown,
+): Promise<ActionResult> {
+  const parsed = removeWorkoutDayExerciseSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+  }
+  const { workoutDayExerciseId } = parsed.data;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const owns = await assertOwnsWorkoutDayExercise(user.id, workoutDayExerciseId);
+  if (!owns) {
+    return { error: "Diese Übung wurde nicht gefunden." };
+  }
+
+  try {
+    await db
+      .delete(workoutDayExercise)
+      .where(
+        and(
+          eq(workoutDayExercise.id, workoutDayExerciseId),
+          eq(workoutDayExercise.userId, user.id),
+        ),
+      );
+  } catch (err) {
+    console.error(
+      "removeWorkoutDayExercise fehlgeschlagen:",
+      err instanceof Error ? err.message : err,
+    );
+    return {
+      error: "Entfernen hat nicht geklappt. Bitte versuche es gleich noch einmal.",
+    };
+  }
+
+  revalidatePath("/training");
+  revalidatePath("/heute");
+  return { ok: true };
+}
+
+/**
+ * Ersetzt die Übung einer bestehenden `workout_day_exercise`-Zeile durch eine
+ * andere globale ODER eigene Übung. Sätze/Wdh./Pause/Reihenfolge bleiben
+ * erhalten. Setzt genau eine Referenz (XOR-CHECK). Ownership der Zeile UND der
+ * neuen Übung wird serverseitig geprüft.
+ */
+export async function replaceWorkoutDayExercise(
+  rawInput: unknown,
+): Promise<ActionResult> {
+  const parsed = replaceWorkoutDayExerciseSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+  }
+  const input = parsed.data;
+
+  const ref = parseExerciseUid(input.exerciseUid);
+  if (!ref) return { error: "Ungültige Übungsreferenz." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // Bestehende Zeile muss dem Nutzer gehören (Kette wde → day → plan → user).
+  const owns = await assertOwnsWorkoutDayExercise(
+    user.id,
+    input.workoutDayExerciseId,
+  );
+  if (!owns) {
+    return { error: "Diese Übung wurde nicht gefunden." };
+  }
+
+  // Neue Übungsreferenz prüfen: global = Existenz, custom = eigene Übung.
+  const refCheck = await assertOwnsExerciseRef(user.id, ref);
+  if (!refCheck.ok) {
+    return { error: "Diese Übung ist nicht verfügbar." };
+  }
+
+  try {
+    await db
+      .update(workoutDayExercise)
+      .set({
+        // Genau eine Referenz (XOR-CHECK in der DB), die andere wird genullt.
+        exerciseId: ref.kind === "global" ? ref.id : null,
+        customExerciseId: ref.kind === "custom" ? ref.id : null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(workoutDayExercise.id, input.workoutDayExerciseId),
+          eq(workoutDayExercise.userId, user.id),
+        ),
+      );
+  } catch (err) {
+    console.error(
+      "replaceWorkoutDayExercise fehlgeschlagen:",
+      err instanceof Error ? err.message : err,
+    );
+    return {
+      error: "Ersetzen hat nicht geklappt. Bitte versuche es gleich noch einmal.",
+    };
+  }
+
+  revalidatePath("/training");
+  revalidatePath("/heute");
+  return { ok: true };
+}
+
+/**
+ * Passt Sätze/Wdh./Pause einer Übung an (einfache Vorgabe, keine
+ * Periodisierung). Zod-validiert mit sinnvollen Grenzen. Ownership der Zeile
+ * wird serverseitig geprüft.
+ */
+export async function updateWorkoutDayExercisePrescription(
+  rawInput: unknown,
+): Promise<ActionResult> {
+  const parsed = updateWorkoutDayExercisePrescriptionSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+  }
+  const input = parsed.data;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const owns = await assertOwnsWorkoutDayExercise(
+    user.id,
+    input.workoutDayExerciseId,
+  );
+  if (!owns) {
+    return { error: "Diese Übung wurde nicht gefunden." };
+  }
+
+  try {
+    await db
+      .update(workoutDayExercise)
+      .set({
+        targetSets: input.targetSets,
+        targetReps: input.targetReps,
+        targetRestSec: input.targetRestSec,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(workoutDayExercise.id, input.workoutDayExerciseId),
+          eq(workoutDayExercise.userId, user.id),
+        ),
+      );
+  } catch (err) {
+    console.error(
+      "updateWorkoutDayExercisePrescription fehlgeschlagen:",
+      err instanceof Error ? err.message : err,
+    );
+    return {
+      error: "Anpassen hat nicht geklappt. Bitte versuche es gleich noch einmal.",
     };
   }
 
