@@ -41,6 +41,32 @@ export async function assertOwnsWorkoutDay(
   return Boolean(row);
 }
 
+/**
+ * Prüft, ob eine `workout_day_exercise`-Zeile dem Nutzer gehört — über die
+ * gesamte Kette workout_day_exercise → workout_day → workout_plan → user_id.
+ * Primäre Verteidigung beim Entfernen/Ersetzen/Anpassen (Defense-in-Depth).
+ */
+export async function assertOwnsWorkoutDayExercise(
+  userId: string,
+  workoutDayExerciseId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: workoutDayExercise.id })
+    .from(workoutDayExercise)
+    .innerJoin(workoutDay, eq(workoutDayExercise.workoutDayId, workoutDay.id))
+    .innerJoin(workoutPlan, eq(workoutDay.planId, workoutPlan.id))
+    .where(
+      and(
+        eq(workoutDayExercise.id, workoutDayExerciseId),
+        eq(workoutDayExercise.userId, userId),
+        eq(workoutDay.userId, userId),
+        eq(workoutPlan.userId, userId),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
+}
+
 export interface ExerciseRefCheck {
   ok: boolean;
   /** nur bei globaler Übung gesetzt — für Default-Vorgabe. */

@@ -154,3 +154,56 @@ export const addExerciseToWorkoutDaySchema = z.object({
 export type AddExerciseToWorkoutDayInput = z.infer<
   typeof addExerciseToWorkoutDaySchema
 >;
+
+/* ------------------------------------------------------------------ */
+/* Übung bearbeiten: entfernen · ersetzen · anpassen (Phase 7B Editor) */
+/* ------------------------------------------------------------------ */
+
+/** Pflicht-Zahlenfeld (Komma erlaubt, leer → ungültig) mit Grenzen. */
+function requiredNumber(min: number, max: number) {
+  return z.preprocess((value) => {
+    if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed === "") return undefined;
+      const parsed = Number(trimmed.replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    return undefined;
+  }, z
+    .number("Bitte gib eine Zahl an.")
+    .int("Bitte nur ganze Zahlen.")
+    .min(min, "Wert ist zu klein.")
+    .max(max, "Wert ist zu groß."));
+}
+
+/** Übung aus einem Trainingstag entfernen (nur die Zuordnungszeile). */
+export const removeWorkoutDayExerciseSchema = z.object({
+  workoutDayExerciseId: z.uuid("Ungültige Übung."),
+});
+
+export type RemoveWorkoutDayExerciseInput = z.infer<
+  typeof removeWorkoutDayExerciseSchema
+>;
+
+/** Übung in einem Trainingstag durch eine andere ersetzen. */
+export const replaceWorkoutDayExerciseSchema = z.object({
+  workoutDayExerciseId: z.uuid("Ungültige Übung."),
+  exerciseUid: exerciseUidSchema,
+});
+
+export type ReplaceWorkoutDayExerciseInput = z.infer<
+  typeof replaceWorkoutDayExerciseSchema
+>;
+
+/** Sätze/Wdh./Pause einer Übung anpassen (einfache Vorgabe, keine Periodisierung). */
+export const updateWorkoutDayExercisePrescriptionSchema = z.object({
+  workoutDayExerciseId: z.uuid("Ungültige Übung."),
+  targetSets: requiredNumber(1, 10),
+  targetReps: requiredNumber(1, 100),
+  targetRestSec: requiredNumber(15, 600),
+});
+
+export type UpdateWorkoutDayExercisePrescriptionInput = z.infer<
+  typeof updateWorkoutDayExercisePrescriptionSchema
+>;

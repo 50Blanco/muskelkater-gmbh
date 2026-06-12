@@ -6,14 +6,18 @@ import {
   muscleGroupLabel,
 } from "@/lib/training/labels";
 import type { PlanExercise } from "@/lib/training/get-active-plan";
+import type { LibraryExercise } from "@/lib/training/exercise-filters";
+import { ExerciseActions } from "./exercise-actions";
 
 interface ExerciseRowProps {
   ex: PlanExercise;
   position: number;
+  /** Übungsbibliothek für den Ersetzen-Picker. */
+  library: LibraryExercise[];
 }
 
 /** Eine Übung in der Tagesansicht: Name, Muskelgruppe, Sätze×Wdh., Pause, Technik. */
-export function ExerciseRow({ ex, position }: ExerciseRowProps) {
+export function ExerciseRow({ ex, position, library }: ExerciseRowProps) {
   return (
     <li className="flex gap-3 rounded-[var(--radius-sm)] border border-border bg-surface px-3.5 py-3">
       <span className="grid size-7 shrink-0 place-items-center rounded-full bg-surface-3 text-xs font-semibold text-muted">
@@ -50,6 +54,7 @@ export function ExerciseRow({ ex, position }: ExerciseRowProps) {
             <span className="text-muted">Technik:</span> {ex.instructions}
           </p>
         )}
+        <ExerciseActions ex={ex} library={library} />
       </div>
     </li>
   );
