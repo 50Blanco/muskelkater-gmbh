@@ -28,8 +28,8 @@ interface Props {
 export function SocialFeed({ events, groupId }: Props) {
   if (events.length === 0) {
     return (
-      <p className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface/40 px-4 py-6 text-center text-sm text-dim">
-        Noch keine Aktivitäten in den letzten 7 Tagen — los, das erste Event machen!
+      <p className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface/40 px-4 py-3 text-center text-sm text-dim">
+        Noch keine Aktivitäten — starte dein erstes Event.
       </p>
     );
   }

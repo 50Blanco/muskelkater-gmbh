@@ -23,8 +23,15 @@ export function HeuteSocialV2({ summary }: Props) {
     return <TeamEmptyState />;
   }
 
-  const { ownRank, ownOpenSources, challengeLabel, members, feed, group } =
-    summary;
+  const {
+    ownRank,
+    ownOpenSources,
+    challengeLabel,
+    challenge,
+    members,
+    feed,
+    group,
+  } = summary;
 
   return (
     <Card className="sm:col-span-2">
@@ -52,30 +59,56 @@ export function HeuteSocialV2({ summary }: Props) {
 
       <CardContent className="space-y-4">
         {/* Challenge + eigener Stand */}
-        <div className="rounded-[var(--radius-sm)] border border-accent/25 bg-accent-soft/40 px-4 py-3">
-          <p className="flex items-center gap-1.5 font-display text-sm font-semibold text-foreground">
-            <Trophy className="size-4 shrink-0 text-accent" />
-            {challengeLabel ?? "Team-Challenge: noch keine aktive"}
-          </p>
-          <p className="mt-1.5 text-sm text-muted">
-            {ownRank ? (
-              <>
-                Du:{" "}
-                <span className="font-semibold text-foreground">
-                  Platz {ownRank.rank}
-                </span>{" "}
-                · {ownRank.score} Punkte
-              </>
-            ) : (
-              "Sammle heute deine ersten Punkte."
+        {challenge ? (
+          <div className="rounded-[var(--radius-sm)] border border-accent/25 bg-accent-soft/40 px-4 py-3">
+            <p className="flex items-center gap-1.5 font-display text-sm font-semibold text-foreground">
+              <Trophy className="size-4 shrink-0 text-accent" />
+              {challengeLabel}
+            </p>
+            {challenge.stakeText && (
+              <p className="mt-1 text-xs text-muted">
+                Einsatz: {challenge.stakeText}
+              </p>
             )}
-          </p>
-          <p className="mt-1 text-xs text-dim">
-            {ownOpenSources.length > 0
-              ? `Heute offen: ${ownOpenSources.map((s) => s.label).join(", ")}`
-              : "Heute alles erledigt — stark!"}
-          </p>
-        </div>
+            <p className="mt-1.5 text-sm text-muted">
+              {ownRank ? (
+                <>
+                  Du:{" "}
+                  <span className="font-semibold text-foreground">
+                    Platz {ownRank.rank}
+                  </span>{" "}
+                  · {ownRank.score} Punkte
+                </>
+              ) : (
+                "Sammle heute deine ersten Punkte."
+              )}
+            </p>
+            <p className="mt-1 text-xs text-dim">
+              {ownOpenSources.length > 0
+                ? `Heute offen: ${ownOpenSources.map((s) => s.label).join(", ")}`
+                : "Heute alles erledigt — stark!"}
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface/40 px-4 py-4">
+            <p className="text-sm font-semibold text-foreground">
+              Keine aktive Team-Challenge
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              Starte eine Challenge und sammelt gemeinsam Punkte.
+            </p>
+            <Link
+              href="/team"
+              className={cn(
+                buttonVariants({ variant: "secondary", size: "sm" }),
+                "mt-3",
+              )}
+            >
+              Challenge starten
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        )}
 
         {/* Team-Status-Karten */}
         <div className="grid gap-2 sm:grid-cols-2">
@@ -91,13 +124,20 @@ export function HeuteSocialV2({ summary }: Props) {
               )}
             >
               <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="truncate text-sm font-medium text-foreground">
+                <span className="min-w-0 truncate text-sm font-medium text-foreground">
                   {member.displayName}
                   {member.isCurrentUser && (
                     <span className="text-muted"> (Du)</span>
                   )}
                 </span>
-                <ArrowRight className="size-3.5 text-dim transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {member.status.dailyScore > 0 && (
+                    <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold tabular-nums text-accent">
+                      +{member.status.dailyScore}
+                    </span>
+                  )}
+                  <ArrowRight className="size-3.5 text-dim transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
+                </div>
               </div>
               <MemberStatusPills status={member.status} />
             </Link>
