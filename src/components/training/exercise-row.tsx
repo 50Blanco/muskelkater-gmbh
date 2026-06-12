@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   formatRest,
   formatSetsReps,
@@ -19,7 +20,12 @@ export function ExerciseRow({ ex, position }: ExerciseRowProps) {
       </span>
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-          <p className="font-medium text-foreground">{ex.name}</p>
+          <Link
+            href={`/training/uebungen/g_${ex.exerciseId}`}
+            className="font-medium text-foreground hover:text-accent transition-colors"
+          >
+            {ex.name}
+          </Link>
           <p className="text-sm font-semibold tabular-nums text-foreground">
             {formatSetsReps(ex.targetSets, ex.targetReps)}
           </p>

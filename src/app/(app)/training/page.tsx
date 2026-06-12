@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BookOpen } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTrainingPlan } from "@/lib/training/get-active-plan";
 import { selectNextDay } from "@/lib/plan/select-next-day";
@@ -41,7 +43,15 @@ export default async function TrainingPage() {
         eyebrow="Dein Trainingsplan"
         title={plan.name}
         subtitle="Alle Trainingstage mit Übungen, Sätzen, Pausen und Technik-Hinweisen."
-      />
+      >
+        <Link
+          href="/training/uebungen"
+          className="inline-flex items-center gap-2 rounded-[var(--radius-sm)] border border-border bg-surface px-3 py-2 text-sm font-medium text-muted hover:bg-surface-2 hover:text-foreground transition-colors"
+        >
+          <BookOpen className="size-4" />
+          Übungsbibliothek
+        </Link>
+      </PageHeader>
       <PlanOverview plan={plan} highlightDayIndex={nextDay?.dayIndex ?? null} />
       <CustomExerciseSection customExercises={customExercises} />
     </div>
