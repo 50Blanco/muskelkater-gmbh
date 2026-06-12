@@ -4,11 +4,14 @@ import {
   LOCATION_LABELS,
 } from "@/lib/training/labels";
 import type { ActivePlan } from "@/lib/training/get-active-plan";
+import type { LibraryExercise } from "@/lib/training/exercise-filters";
 import { DayCard } from "./day-card";
 
 interface PlanOverviewProps {
   plan: ActivePlan;
   highlightDayIndex: number | null;
+  /** Übungsbibliothek (global + eigene) für den „Übung hinzufügen"-Picker. */
+  library: LibraryExercise[];
 }
 
 interface MetaChip {
@@ -17,7 +20,11 @@ interface MetaChip {
 }
 
 /** Plan-Kopf (Ziel, Tage/Woche, Ort) + Liste aller Trainingstage. */
-export function PlanOverview({ plan, highlightDayIndex }: PlanOverviewProps) {
+export function PlanOverview({
+  plan,
+  highlightDayIndex,
+  library,
+}: PlanOverviewProps) {
   const chips: MetaChip[] = [];
   if (plan.goalType && GOAL_TYPE_LABELS[plan.goalType]) {
     chips.push({ icon: Target, label: GOAL_TYPE_LABELS[plan.goalType] });
@@ -54,6 +61,7 @@ export function PlanOverview({ plan, highlightDayIndex }: PlanOverviewProps) {
             key={day.id}
             day={day}
             highlight={day.dayIndex === highlightDayIndex}
+            library={library}
           />
         ))}
       </div>
