@@ -29,6 +29,13 @@
       "when": 1781283766755,
       "tag": "0003_silly_bushwacker",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781296405684,
+      "tag": "0004_phase9_team_challenge_steps",
+      "breakpoints": true
     }
   ]
 }

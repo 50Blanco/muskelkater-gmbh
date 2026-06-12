@@ -42,8 +42,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getSocialDashboard } from "@/lib/social/get-social-dashboard";
-import { SocialDashboardCard } from "@/components/social/social-dashboard-card";
+import { getHeuteSocialSummary } from "@/lib/social/get-heute-social-summary";
+import { HeuteSocialV2 } from "@/components/social/heute-social-v2";
 
 export const metadata: Metadata = { title: "Heute" };
 
@@ -174,8 +174,8 @@ export default async function HeutePage() {
         .limit(1),
     ]);
 
-  // Phase-8-Queries: Social Dashboard (parallel zu Phase-5-Queries)
-  const [[todayNutritionLog], activeHabits, todayHabitLogs, socialData] = await Promise.all([
+  // Phase-9-Queries: Social V2 Summary (parallel zu Phase-5-Queries)
+  const [[todayNutritionLog], activeHabits, todayHabitLogs, socialSummary] = await Promise.all([
     db
       .select({
         proteinG: dailyNutritionLog.proteinG,
@@ -203,7 +203,7 @@ export default async function HeutePage() {
           eq(dailyHabitLog.logDate, todayBerlin),
         ),
       ),
-    getSocialDashboard(user.id),
+    getHeuteSocialSummary(user.id),
   ]);
 
   const days = plan?.days ?? [];
@@ -228,8 +228,8 @@ export default async function HeutePage() {
         }
       />
 
-      {/* Social-Bereich — Crew-Feed ganz oben */}
-      <SocialDashboardCard data={socialData} currentUserId={user.id} />
+      {/* Social V2 — Team-Status, Challenge & Feed ganz oben */}
+      <HeuteSocialV2 summary={socialSummary} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Heute empfohlen */}

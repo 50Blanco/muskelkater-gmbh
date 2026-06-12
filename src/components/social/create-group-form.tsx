@@ -31,7 +31,7 @@ export function CreateGroupForm() {
   if (!open) {
     return (
       <Button type="button" size="sm" onClick={() => setOpen(true)}>
-        <Plus className="size-4" /> Neue Crew erstellen
+        <Plus className="size-4" /> Neues Team erstellen
       </Button>
     );
   }
@@ -40,7 +40,7 @@ export function CreateGroupForm() {
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="space-y-1.5">
         <label className="block text-xs font-medium text-muted">
-          Crew-Name
+          Team-Name
         </label>
         <input
           type="text"

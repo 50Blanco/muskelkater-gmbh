@@ -113,6 +113,7 @@ export async function joinSocialGroupByCode(
 
   if (existing) {
     revalidatePath("/heute");
+    revalidatePath("/team");
     return { ok: true };
   }
 
@@ -128,6 +129,7 @@ export async function joinSocialGroupByCode(
   }
 
   revalidatePath("/heute");
+  revalidatePath("/team");
   return { ok: true };
 }
 
@@ -198,5 +200,6 @@ export async function reactToSocialEvent(
   }
 
   revalidatePath("/heute");
+  revalidatePath("/team");
   return { ok: true };
 }
