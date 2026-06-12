@@ -22,6 +22,13 @@
       "when": 1781226057803,
       "tag": "0002_curious_the_spike",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781283766755,
+      "tag": "0003_silly_bushwacker",
+      "breakpoints": true
     }
   ]
 }

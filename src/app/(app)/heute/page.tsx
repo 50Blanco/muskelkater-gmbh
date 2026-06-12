@@ -42,6 +42,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getSocialDashboard } from "@/lib/social/get-social-dashboard";
+import { SocialDashboardCard } from "@/components/social/social-dashboard-card";
 
 export const metadata: Metadata = { title: "Heute" };
 
@@ -172,8 +174,8 @@ export default async function HeutePage() {
         .limit(1),
     ]);
 
-  // Phase-5-Queries (Berlin-TZ) — getrennt, um bestehende Destructuring nicht zu berühren.
-  const [[todayNutritionLog], activeHabits, todayHabitLogs] = await Promise.all([
+  // Phase-8-Queries: Social Dashboard (parallel zu Phase-5-Queries)
+  const [[todayNutritionLog], activeHabits, todayHabitLogs, socialData] = await Promise.all([
     db
       .select({
         proteinG: dailyNutritionLog.proteinG,
@@ -201,6 +203,7 @@ export default async function HeutePage() {
           eq(dailyHabitLog.logDate, todayBerlin),
         ),
       ),
+    getSocialDashboard(user.id),
   ]);
 
   const days = plan?.days ?? [];
@@ -224,6 +227,9 @@ export default async function HeutePage() {
             : "Dein Plan ist bereit."
         }
       />
+
+      {/* Social-Bereich — Crew-Feed ganz oben */}
+      <SocialDashboardCard data={socialData} currentUserId={user.id} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Heute empfohlen */}

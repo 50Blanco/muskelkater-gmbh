@@ -569,3 +569,103 @@ export const coachRecommendation = pgTable(
     ownerPolicy("coach_recommendation", t.userId),
   ],
 );
+
+/* ------------------------------------------------------------------ */
+/* Social                                                             */
+/* ------------------------------------------------------------------ */
+
+export const socialGroupRoleEnum = pgEnum("social_group_role", [
+  "owner",
+  "member",
+]);
+
+export const socialReactionTypeEnum = pgEnum("social_reaction_type", [
+  "stark",
+  "weiter_so",
+  "respekt",
+]);
+
+export const socialTargetTypeEnum = pgEnum("social_target_type", [
+  "workout_session",
+  "daily_mission",
+  "daily_habit_log",
+]);
+
+/** Trainingsgruppe / Crew. Jeder Nutzer kann mehrere Gruppen haben. */
+export const socialGroup = pgTable(
+  "social_group",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ownerUserId: uuid("owner_user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    inviteCode: text("invite_code").notNull().unique(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    index("idx_social_group_owner").on(t.ownerUserId),
+    ownerPolicy("social_group", t.ownerUserId),
+  ],
+);
+
+/** Mitgliedschaft: Nutzer ↔ Gruppe (unique). */
+export const socialGroupMember = pgTable(
+  "social_group_member",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => socialGroup.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    role: socialGroupRoleEnum("role").default("member").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    unique("uq_social_group_member").on(t.groupId, t.userId),
+    index("idx_social_group_member_user").on(t.userId),
+    index("idx_social_group_member_group").on(t.groupId),
+    ownerPolicy("social_group_member", t.userId),
+  ],
+);
+
+/**
+ * Reaktionen auf Feed-Events (workout_session / daily_mission / daily_habit_log).
+ * toggle-Semantik: unique → beim zweiten Klick löschen.
+ */
+export const socialReaction = pgTable(
+  "social_reaction",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => socialGroup.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    targetType: socialTargetTypeEnum("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    reactionType: socialReactionTypeEnum("reaction_type").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    unique("uq_social_reaction").on(
+      t.groupId,
+      t.userId,
+      t.targetType,
+      t.targetId,
+      t.reactionType,
+    ),
+    index("idx_social_reaction_group").on(t.groupId),
+    index("idx_social_reaction_target").on(t.targetType, t.targetId),
+    ownerPolicy("social_reaction", t.userId),
+  ],
+);
