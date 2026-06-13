@@ -15,10 +15,11 @@ Kurze Reports liefern.
 * **Branch:** `master`
 * **GitHub Remote:** `https://github.com/50Blanco/muskelkater-gmbh.git`
 * **Production URL:** `https://muskelkater-gmbh.vercel.app`
+* **Phase 11 Merge-Commit:** `10e6263` — `merge: Phase 11 — Progress and weekly body check-in`
 * **Phase 10 Merge-Commit:** `76b0f40` — `merge: Phase 10 — Team experience V1`
 * **Phase 9 Merge-Commit:** `95bf2a4` — `merge: Phase 9 — Team challenge MVP`
 * **Working tree:** clean (untracked `.vscode/`, `muskelkater-gmbh/` — werden nicht committed)
-* **Gemergte Phasen:** 1 · 2 · 3 · 4 · 5 · 6 · 7A · 7B/7B1 · 7C · 8 · 9 · **10**
+* **Gemergte Phasen:** 1 · 2 · 3 · 4 · 5 · 6 · 7A · 7B/7B1 · 7C · 8 · 9 · 10 · **11**
 * **master auf GitHub:** aktuell (`git push` erledigt)
 
 ---
@@ -153,6 +154,38 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 * **`social-feed.tsx` + `get-social-dashboard.ts`** für `member_week` ergänzt (Icon: Heart, Text: „hat Motivation gesendet")
 * **Smoke-Script:** `scripts/qa-phase10-ux-smoke.ts` — 17 Tests PASS
 * **Merge-Commit:** `76b0f40`
+
+### Phase 11 — Progress V1 + Weekly Body Check-in
+
+* **Neue DB-Tabelle `weekly_body_checkin`** — speichert ausschließlich den Completion-Status (keine Messwerte):
+  * `id`, `user_id`, `week_date` (ISO-Montag), `completed_at`
+  * `UNIQUE(user_id, week_date)` — ein Check-in pro Nutzer pro Woche
+  * RLS owner-only Policy `weekly_body_checkin_owner` — in Production verifiziert via Supabase MCP
+* **Migration** `drizzle/0005_phase11_weekly_body_checkin.sql`:
+  * Enthält auch `ALTER TYPE social_target_type ADD VALUE 'member_week'` (Phase 10 Enum, erstmals in Migrationsdatei festgehalten)
+  * Journal-Eintrag `idx: 5` + Snapshot `0005_snapshot.json` — atomar via `drizzle-kit generate`
+* **`/fortschritt` V1 — echte Seite statt Placeholder:**
+  * Gewichtsverlauf (pure SVG Polyline, `WeightChart`)
+  * Bauchumfang + Armumfang als Sparklines (`MeasurementSparkline`, pure SVG)
+  * Workout-Streak als CSS-Balkendiagramm (`WorkoutBarChart`, Tailwind-Heights)
+  * Loader: `src/lib/body/get-body-progress.ts` (server-only, RLS-geschützt)
+* **Check-in-Card auf `/heute`** — immer sichtbar, Sonntag hervorgehoben:
+  * Zeigt Status dieser Woche (erledigt / noch offen)
+  * Inline-Formular: Gewicht (kg), Bauchumfang (cm), Armumfang (cm) — alle optional, mind. 1 Wert
+  * Server Action `submitBodyCheckin()` in `src/app/(app)/heute/actions.ts`
+  * Schreibt in `bodyMetrics` + `bodyMeasurement` + `weeklyBodyCheckin` atomar
+* **Scoring:** `bodyCheckin: 50` als neuer `POINTS`-Key in `challenge-scoring.ts`
+  * Bonus-only (+50 Punkte einmalig pro Woche) — kein Malus, kein Body-Shaming
+  * `loadMemberWeeklySignals()` in `team-queries.ts` liest `weeklyBodyCheckin`; kein Zugriff auf `bodyMetrics`/`bodyMeasurement`
+* **Team-Layer:** `weeklyCheckinDone: boolean` fließt durch:
+  * `MemberWeeklySignals` → `TeamMemberCard` → `HeuteMemberStatus` → `MemberStatusPills`
+  * Team sieht nur ✓ / ○ — niemals Messwerte
+  * `getHeuteSocialSummary` lädt eigenen Check-in-Status parallel (`checkinDoneThisWeek: boolean`)
+* **Privacy:** `bodyMetrics` + `bodyMeasurement` haben Owner-only-RLS; kein Import dieser Tabellen in Social/Team-Loader (verifiziert per `grep`)
+* **Zod v4 Fix:** `invalid_type_error` aus `z.number()` Optionen entfernt (breaking change in Zod v4)
+* **`getWeekMondayIso()`** in `src/lib/utils/date.ts` — UTC-stabiler ISO-Montag-Helper, Sunday-Edge-Case korrekt (`jsDay === 0 ? 6 : jsDay - 1`)
+* **Smoke-Script:** `scripts/qa-phase11-body-checkin.ts` — 28 Tests PASS
+* **Merge-Commit:** `10e6263`
 * **Production live:** `https://muskelkater-gmbh.vercel.app`
 
 ---
@@ -161,8 +194,11 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 
 | Commit | Beschreibung |
 |--------|-------------|
+| `10e6263` | merge: Phase 11 — Progress and weekly body check-in |
+| `fd5cd79` | chore: track phase 11 weekly checkin migration |
+| `6f3a08a` | feat: Phase 11 — Progress V1 + Weekly Body Check-in |
 | `76b0f40` | merge: Phase 10 — Team experience V1 |
-| `3290d06` | docs: update handoff after phase 10 |
+| `dfca2ec` | docs: update handoff after phase 10 |
 | `57ce31b` | feat: Phase 10 — Team Experience V1 |
 | `95bf2a4` | merge: Phase 9 — Team challenge MVP |
 | `eb2eeed` | fix: improve team member progress UX |
@@ -186,6 +222,8 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 
 * Onboarding (7 Schritte, Safety, Plan-Generierung)
 * Heute-Dashboard mit Social V2 (Team-Status, Challenge, offene Signale, Feed)
+* Wöchentlicher Body-Check-in auf `/heute` (Gewicht, Bauchumfang, Armumfang — privat)
+* `/fortschritt` — echte Seite: Gewichtsverlauf, Umfangs-Sparklines, Workout-Balkendiagramm
 * Training: Trainingsplan ansehen, Workout starten/abschließen
 * Trainingstagebuch: vergangene Sessions einsehen
 * Übungsbibliothek: suchen, filtern, hinzufügen
@@ -195,9 +233,9 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 * Habits abhaken
 * Team erstellen (Invite-Code), beitreten
 * `/team` — Mitgliederübersicht, Rangliste, Challenge-Karte, Support-Hints, Feed
-* `/team/[memberId]` — sicherer Wochenstatus, Summary-Stats, Balkendiagramm, Signale
+* `/team/[memberId]` — sicherer Wochenstatus, Summary-Stats, Balkendiagramm, Signale, Check-in-Pill
 * Team-Challenge starten (Titel, Laufzeit, optionaler Einsatz-Text)
-* Manuelle Schritte auf `/team/[memberId]` eintragen
+* Manuelle Schritte auf `/heute` eintragen
 * Reaktionen (stark / weiter so / respekt) — Toggle
 
 ---
@@ -212,7 +250,7 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 * Team-Challenge statt Wette
 * Food-AI: später, nicht jetzt
 * Coach: später, nicht jetzt
-* Fortschritt-Seite als Hauptfeature: später, nicht jetzt
+* Body Check-in: Bonus-only (+50), kein Malus, kein Body-Shaming
 
 ---
 
@@ -221,38 +259,11 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 * Mehrere Teams pro Nutzer — UI noch nicht gelöst (aktives Team = erste Gruppe)
 * Challenge-Historie fehlt
 * Individuelle Challenge-Ziele fehlen
-* Motivation / Push-Actions vorbereitet, aber noch keine echten Social-Actions pro Mitglied
-* Fortschritt-Seite (`/fortschritt`) — Placeholder
 * Coach-Seite (`/coach`) — Placeholder
 * Nutrition — Basis funktioniert; keine Food-Photo-AI
 * Privacy- und Sichtbarkeits-Settings — noch nicht gebaut
 * Schritte: manuell trackbar; keine Wearable-Anbindung
-
----
-
-### Phase 10 — Team Experience V1 (in Review, Branch: feature/phase-10-team-ux)
-
-**Ziel:** Das Team-Erlebnis stärken, ohne große neue Systeme.
-
-Umgesetzt:
-* **Schritte Quick-Add auf `/heute`** — `StepsInput` direkt in `HeuteSocialV2`; `todaySteps` + `todayDate` in `HeuteSocialSummary`
-* **Challenge CTA & Countdown** — `ChallengeCard` mit verbessertem Leer-State (Icon + Beschreibung) und Fortschrittsbalken im aktiven State
-* **Motivation Push-Button** — `SocialReactionButtons` mit `targetType: "member_week"` auf `/team/[memberId]` statt Platzhalter-Link; neuer Enum-Wert `member_week` (additiv, Migration `phase10_add_member_week_target_type`)
-
-**Empfohlene nächste Phase:**
-
-### Phase 11 — Fortschritt oder Profil
-
-Kandidaten:
-* Fortschritt-Seite (`/fortschritt`) als echtes Feature (Gewichtsverlauf, Körperdaten, Ziel-Tracking)
-* Profil-Seite aufwerten (Ziele anpassen, Plan wechseln)
-* Privacy-Settings (Sichtbarkeit für Team)
-* Mehrere Teams pro Nutzer
-
-Nicht in Phase 11:
-* kein Food-AI
-* kein Chat
-* keine Kommentare
+* `/fortschritt` — Streak-Anzeige (Wochen in Folge) noch nicht gebaut
 
 ---
 
@@ -297,9 +308,24 @@ npx tsx scripts/qa-phase7b-editor-smoke.ts
 npx tsx scripts/qa-phase8-social-smoke.ts
 npx tsx scripts/qa-phase9-team-challenge-smoke.ts
 npx tsx scripts/qa-phase10-ux-smoke.ts
+npx tsx scripts/qa-phase11-body-checkin.ts
 ```
 
 ---
+
+## Testergebnisse Phase 11
+
+| Check | Ergebnis |
+|-------|----------|
+| `npm run build` | PASS (19 Routen) |
+| `npx tsc --noEmit` | PASS |
+| `npm run lint` | PASS |
+| Phase 11 Body Check-in Smoke | PASS (28 Tests) |
+| Phase 10 UX Smoke | PASS (17 Tests) |
+| Vercel Production Deploy | PASS (`dpl_3dMThZJk9LK7adoy3yJ6SaG8c5WU`) |
+| Live-Check `/login` | PASS |
+| Live-Check `/heute` (Redirect) | PASS |
+| Live-Check `/team` (Redirect) | PASS |
 
 ## Testergebnisse Phase 10
 
@@ -331,7 +357,6 @@ npx tsx scripts/qa-phase10-ux-smoke.ts
 * Turbopack Cache-Probleme: `npm run dev:clean`
 * Workout-Session: kein Autosave, Sätze erst beim Abschluss
 * Schritte: manuell über `daily_step_log`; keine Wearables
-* Fortschritt-Seite: Placeholder
 * Coach-Seite: Placeholder
 * Aktives Team = erste Gruppe des Nutzers (Mehrfach-Teams-UI offen)
 * Mahlzeiten-Detail im Member-Detail: Häkchen-Zähler (kein Beschreibungsfeld im Schema)
@@ -343,3 +368,10 @@ npx tsx scripts/qa-phase10-ux-smoke.ts
 **Die nächste Claude-Session soll zuerst `docs/AI_HANDOFF.md` lesen und danach im Planungsmodus arbeiten.**
 
 **Erst nach expliziter Freigabe durch den Nutzer darf wieder Code gebaut werden.**
+
+**Kandidaten für Phase 12:**
+* Fortschritt-Streak (Wochen in Folge Check-in erledigt)
+* Profil-Seite aufwerten (Ziele anpassen, Plan wechseln)
+* Privacy-Settings (Sichtbarkeit für Team)
+* Mehrere Teams pro Nutzer
+* Coach-Seite Basis
