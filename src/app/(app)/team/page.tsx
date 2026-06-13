@@ -17,6 +17,7 @@ import { ChallengeCard } from "@/components/team/challenge-card";
 import { TeamLeaderboard } from "@/components/team/team-leaderboard";
 import { MemberCard } from "@/components/team/member-card";
 import { SupportHints } from "@/components/team/support-hints";
+import { InviteCode } from "@/components/team/invite-code";
 import { SocialFeed } from "@/components/social/social-feed";
 
 export const metadata: Metadata = { title: "Team" };
@@ -38,7 +39,7 @@ export default async function TeamPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Community"
+        eyebrow="Team"
         title="Dein Team"
         subtitle="Status sehen · Challenge verfolgen · motivieren."
       />
@@ -49,29 +50,47 @@ export default async function TeamPage() {
         <>
           <TeamHeader group={data.group} />
 
+          {data.group.memberCount === 1 && (
+            <div className="rounded-[var(--radius)] border border-dashed border-accent/30 bg-accent-soft/20 px-4 py-3.5">
+              <p className="text-sm font-semibold text-foreground">
+                Dein Team ist noch klein.
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                Lade jemanden ein, damit die Challenge spannend wird.
+              </p>
+              <div className="mt-3 flex items-center gap-2 text-xs text-dim">
+                <span>Einladungscode</span>
+                <InviteCode code={data.group.inviteCode} />
+              </div>
+            </div>
+          )}
+
           <ChallengeCard
             groupId={data.group.id}
             challenge={data.challenge}
             defaultStart={today}
             defaultEnd={defaultEnd}
+            memberCount={data.members.length}
           />
 
-          <Card>
-            <CardHeader className="flex-row items-center gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-surface-3 text-muted">
-                <Trophy className="size-5" />
-              </span>
-              <div>
-                <CardTitle className="text-base">Rangliste</CardTitle>
-                <p className="text-xs text-muted">
-                  Punkte dieser Woche — unterstützend gemeint, kein Pranger.
-                </p>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <TeamLeaderboard entries={data.leaderboard} />
-            </CardContent>
-          </Card>
+          {data.members.length > 1 && (
+            <Card>
+              <CardHeader className="flex-row items-center gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-surface-3 text-muted">
+                  <Trophy className="size-5" />
+                </span>
+                <div>
+                  <CardTitle className="text-base">Rangliste</CardTitle>
+                  <p className="text-xs text-muted">
+                    Punkte dieser Woche — unterstützend gemeint, kein Pranger.
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <TeamLeaderboard entries={data.leaderboard} />
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader className="flex-row items-center gap-3">
@@ -99,7 +118,7 @@ export default async function TeamPage() {
                   <LifeBuoy className="size-5" />
                 </span>
                 <div>
-                  <CardTitle className="text-base">Wer braucht Support?</CardTitle>
+                  <CardTitle className="text-base">Heute pushen</CardTitle>
                   <p className="text-xs text-muted">
                     Ein kurzer Push motiviert mehr als jede Statistik.
                   </p>

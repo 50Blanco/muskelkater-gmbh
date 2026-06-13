@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TeamMemberCard } from "@/lib/social/get-team-dashboard";
-import { MemberStatusPills } from "./member-status-pills";
 
 interface Props {
   member: TeamMemberCard;
@@ -44,15 +43,20 @@ export function MemberCard({ member }: Props) {
         </div>
       </div>
 
-      <div className="mt-2.5">
-        <MemberStatusPills status={member.status} />
-      </div>
-
-      {!member.status.activeToday && (
-        <p className="mt-2 text-xs text-dim">
-          Heute noch offen — ein kurzer Push hilft.
+      <div className="mt-2.5 space-y-1">
+        {member.status.dailyScore > 0 ? (
+          <p className="text-xs font-semibold text-accent">
+            Heute: +{member.status.dailyScore} Punkte
+          </p>
+        ) : (
+          <p className="text-xs text-dim">Heute noch keine Punkte</p>
+        )}
+        <p className="text-[11px] text-dim">
+          {member.status.openSources.length === 0
+            ? "Alles erledigt heute"
+            : member.status.openSources.map((s) => `${s.label} offen`).join(" · ")}
         </p>
-      )}
+      </div>
     </Link>
   );
 }

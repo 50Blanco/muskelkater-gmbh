@@ -1,4 +1,4 @@
-import { Flag, Trophy } from "lucide-react";
+import { Flag, Trophy, Users2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -6,7 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getTodayBerlin } from "@/lib/utils/date";
-import { buildChallengeLabel } from "@/lib/social/challenge-scoring";
+import { getChallengeDaysRemaining } from "@/lib/social/challenge-scoring";
 import type { ActiveChallenge } from "@/lib/social/team-queries";
 import { CreateChallengeForm } from "./create-challenge-form";
 
@@ -15,6 +15,13 @@ interface Props {
   challenge: ActiveChallenge | null;
   defaultStart: string;
   defaultEnd: string;
+  memberCount: number;
+}
+
+function daysLabel(remaining: number): string {
+  if (remaining < 0) return "Abgeschlossen";
+  if (remaining === 0) return "Letzter Tag";
+  return `Noch ${remaining} ${remaining === 1 ? "Tag" : "Tage"}`;
 }
 
 export function ChallengeCard({
@@ -22,10 +29,9 @@ export function ChallengeCard({
   challenge,
   defaultStart,
   defaultEnd,
+  memberCount,
 }: Props) {
-  const label = challenge
-    ? buildChallengeLabel(challenge, getTodayBerlin())
-    : null;
+  const today = getTodayBerlin();
 
   return (
     <Card>
@@ -42,12 +48,23 @@ export function ChallengeCard({
       </CardHeader>
       <CardContent className="space-y-4">
         {challenge ? (
-          <div className="rounded-[var(--radius-sm)] border border-accent/30 bg-accent-soft/40 px-4 py-3.5">
+          <div className="rounded-[var(--radius-sm)] border border-accent/30 bg-accent-soft/40 px-4 py-3.5 space-y-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent">
+              <Trophy className="size-3 shrink-0" />
+              Aktive Challenge
+            </span>
             <p className="font-display text-base font-semibold text-foreground">
-              {label}
+              {challenge.title}
             </p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+              <span>{daysLabel(getChallengeDaysRemaining(challenge.endsOn, today))}</span>
+              <span className="inline-flex items-center gap-1">
+                <Users2 className="size-3 shrink-0" />
+                {memberCount} {memberCount === 1 ? "Teilnehmer" : "Teilnehmer"}
+              </span>
+            </div>
             {challenge.stakeText && (
-              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+              <p className="flex items-center gap-1.5 text-sm text-muted">
                 <Flag className="size-3.5 shrink-0" />
                 Einsatz: {challenge.stakeText}
               </p>

@@ -69,7 +69,7 @@ export function CreateChallengeForm({
         onClick={() => setOpen(true)}
       >
         <Trophy className="size-4" />
-        {hasActive ? "Challenge ersetzen" : "Challenge starten"}
+        {hasActive ? "Neue Challenge starten" : "Challenge starten"}
       </Button>
     );
   }
