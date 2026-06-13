@@ -319,6 +319,37 @@ export function buildChallengeLabel(
 }
 
 /* ------------------------------------------------------------------ */
+/* Gewinner-Bestimmung                                                */
+/* ------------------------------------------------------------------ */
+
+export interface WinnerResult {
+  isTie: boolean;
+  winner: { userId: string; displayName: string; score: number } | null;
+}
+
+/**
+ * Bestimmt den Gewinner aus einem fertigen Leaderboard.
+ * Gleichstand → isTie = true, kein einzelner Sieger.
+ * Keine negative Sprache, keine Verlierer-Markierung.
+ */
+export function determineChallengeWinner(
+  leaderboard: LeaderboardEntry[],
+): WinnerResult {
+  if (leaderboard.length === 0) {
+    return { isTie: false, winner: null };
+  }
+  const top = leaderboard[0];
+  const tiedCount = leaderboard.filter((e) => e.rank === 1).length;
+  if (tiedCount > 1) {
+    return { isTie: true, winner: null };
+  }
+  return {
+    isTie: false,
+    winner: { userId: top.userId, displayName: top.displayName, score: top.score },
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /* Privacy-Mapper                                                     */
 /* ------------------------------------------------------------------ */
 

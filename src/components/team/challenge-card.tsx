@@ -1,10 +1,12 @@
-import { Flag, Rocket, Trophy, Users2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Flag, Rocket, Trophy, Users2 } from "lucide-react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { getTodayBerlin } from "@/lib/utils/date";
 import { getChallengeDaysRemaining } from "@/lib/social/challenge-scoring";
 import type { ActiveChallenge } from "@/lib/social/team-queries";
@@ -104,6 +106,14 @@ export function ChallengeCard({
                 Einsatz: {challenge.stakeText}
               </p>
             )}
+
+            <Link
+              href={`/team/challenges/${challenge.id}`}
+              className={buttonVariants({ variant: "secondary", size: "sm" })}
+            >
+              Challenge ansehen
+              <ArrowRight className="size-4" />
+            </Link>
           </div>
         ) : (
           <div className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface/40 px-4 py-5 text-center">

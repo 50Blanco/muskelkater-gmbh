@@ -8,8 +8,10 @@ import {
 } from "./get-social-dashboard";
 import {
   getActiveChallenge,
+  getChallengeHistory,
   loadMemberWeeklySignals,
   type ActiveChallenge,
+  type ChallengeHistoryEntry,
 } from "./team-queries";
 import {
   buildLeaderboard,
@@ -52,6 +54,7 @@ export interface TeamDashboardData {
   ownRank: LeaderboardEntry | null;
   supportHints: SupportHint[];
   feed: FeedEvent[];
+  pastChallenges: ChallengeHistoryEntry[];
 }
 
 const TEAM_FEED_LIMIT = 12;
@@ -82,6 +85,7 @@ export async function getTeamDashboard(
       ownRank: null,
       supportHints: [],
       feed: [],
+      pastChallenges: [],
     };
   }
 
@@ -89,9 +93,10 @@ export async function getTeamDashboard(
   const todayStr = getTodayBerlin();
   const memberUserIds = social.members.map((m) => m.userId);
 
-  const [challenge, signals] = await Promise.all([
+  const [challenge, signals, pastChallenges] = await Promise.all([
     getActiveChallenge(group.id),
     loadMemberWeeklySignals(memberUserIds, group.id, todayStr),
+    getChallengeHistory(group.id, 5),
   ]);
 
   const scored = social.members.map((m) => {
@@ -149,5 +154,6 @@ export async function getTeamDashboard(
     ownRank: findOwnRank(leaderboard),
     supportHints,
     feed: social.feed.slice(0, TEAM_FEED_LIMIT),
+    pastChallenges,
   };
 }

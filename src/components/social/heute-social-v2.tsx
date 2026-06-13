@@ -64,10 +64,18 @@ export function HeuteSocialV2({ summary }: Props) {
         {/* Challenge + eigener Stand */}
         {challenge ? (
           <div className="rounded-[var(--radius-sm)] border border-accent/25 bg-accent-soft/40 px-4 py-3">
-            <p className="flex items-center gap-1.5 font-display text-sm font-semibold text-foreground">
-              <Trophy className="size-4 shrink-0 text-accent" />
-              {challengeLabel}
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="flex items-center gap-1.5 font-display text-sm font-semibold text-foreground">
+                <Trophy className="size-4 shrink-0 text-accent" />
+                {challengeLabel}
+              </p>
+              <Link
+                href={`/team/challenges/${challenge.id}`}
+                className="shrink-0 text-[11px] font-medium text-accent underline-offset-2 hover:underline"
+              >
+                ansehen →
+              </Link>
+            </div>
             {challenge.stakeText && (
               <p className="mt-1 text-xs text-muted">
                 Einsatz: {challenge.stakeText}
