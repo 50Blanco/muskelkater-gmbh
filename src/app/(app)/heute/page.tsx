@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/card";
 import { getHeuteSocialSummary } from "@/lib/social/get-heute-social-summary";
 import { HeuteSocialV2 } from "@/components/social/heute-social-v2";
+import { BodyCheckinCard } from "@/components/body/body-checkin-card";
 
 export const metadata: Metadata = { title: "Heute" };
 
@@ -216,6 +217,13 @@ export default async function HeutePage() {
     recommendation?.message ??
     (goal ? COACH_TIPS[goal.goalType] : COACH_TIPS.get_fit);
 
+  // Sonntag im Berlin-Kontext (0 = Sonntag in getUTCDay, aber wir nutzen Intl)
+  const berlinDayOfWeek = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    timeZone: "Europe/Berlin",
+  }).format(new Date());
+  const isSunday = berlinDayOfWeek === "Sun";
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -232,6 +240,12 @@ export default async function HeutePage() {
 
       {/* Social V2 — Team-Status, Challenge & Feed ganz oben */}
       <HeuteSocialV2 summary={socialSummary} />
+
+      {/* Wöchentlicher Körper-Check-in */}
+      <BodyCheckinCard
+        checkinDone={socialSummary.checkinDoneThisWeek}
+        isSunday={isSunday}
+      />
 
       <div className="-mb-4">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-dim">

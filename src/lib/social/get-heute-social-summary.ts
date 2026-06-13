@@ -1,8 +1,8 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { dailyStepLog } from "@/db/schema";
-import { getTodayBerlin } from "@/lib/utils/date";
+import { dailyStepLog, weeklyBodyCheckin } from "@/db/schema";
+import { getTodayBerlin, getWeekMondayIso } from "@/lib/utils/date";
 import type { FeedEvent, SocialGroupInfo } from "./get-social-dashboard";
 import { getTeamDashboard } from "./get-team-dashboard";
 import type { ActiveChallenge } from "./team-queries";
@@ -25,6 +25,7 @@ export interface HeuteMemberStatus {
   displayName: string;
   isCurrentUser: boolean;
   status: MemberDailyStatus;
+  weeklyCheckinDone: boolean;
 }
 
 export interface HeuteSocialSummary {
@@ -40,6 +41,10 @@ export interface HeuteSocialSummary {
   feed: FeedEvent[];
   todaySteps: number | null;
   todayDate: string;
+  /** Wöchentlicher Check-in für den eingeloggten Nutzer diese Woche erledigt. */
+  checkinDoneThisWeek: boolean;
+  /** ISO-Montag der aktuellen Woche. */
+  thisWeekMonday: string;
 }
 
 const HEUTE_FEED_LIMIT = 5;
@@ -49,8 +54,9 @@ export async function getHeuteSocialSummary(
   userId: string,
 ): Promise<HeuteSocialSummary> {
   const todayStr = getTodayBerlin();
+  const thisWeekMonday = getWeekMondayIso(todayStr);
 
-  const [team, [stepRow]] = await Promise.all([
+  const [team, [stepRow], [checkinRow]] = await Promise.all([
     getTeamDashboard(userId),
     db
       .select({ steps: dailyStepLog.steps })
@@ -59,7 +65,19 @@ export async function getHeuteSocialSummary(
         and(eq(dailyStepLog.userId, userId), eq(dailyStepLog.logDate, todayStr)),
       )
       .limit(1),
+    db
+      .select({ id: weeklyBodyCheckin.id })
+      .from(weeklyBodyCheckin)
+      .where(
+        and(
+          eq(weeklyBodyCheckin.userId, userId),
+          eq(weeklyBodyCheckin.weekDate, thisWeekMonday),
+        ),
+      )
+      .limit(1),
   ]);
+
+  const checkinDoneThisWeek = checkinRow != null;
 
   if (!team.hasTeam || !team.group) {
     return {
@@ -75,6 +93,8 @@ export async function getHeuteSocialSummary(
       feed: [],
       todaySteps: stepRow?.steps ?? null,
       todayDate: todayStr,
+      checkinDoneThisWeek,
+      thisWeekMonday,
     };
   }
 
@@ -91,6 +111,7 @@ export async function getHeuteSocialSummary(
       displayName: m.displayName,
       isCurrentUser: m.isCurrentUser,
       status: m.status,
+      weeklyCheckinDone: m.weeklyCheckinDone,
     }));
 
   return {
@@ -106,5 +127,7 @@ export async function getHeuteSocialSummary(
     feed: team.feed.slice(0, HEUTE_FEED_LIMIT),
     todaySteps: stepRow?.steps ?? null,
     todayDate: todayStr,
+    checkinDoneThisWeek,
+    thisWeekMonday,
   };
 }

@@ -36,6 +36,13 @@
       "when": 1781296405684,
       "tag": "0004_phase9_team_challenge_steps",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781373175541,
+      "tag": "0005_phase11_weekly_body_checkin",
+      "breakpoints": true
     }
   ]
 }

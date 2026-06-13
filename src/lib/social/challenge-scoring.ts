@@ -21,6 +21,8 @@ export const POINTS = {
   water: 10,
   habit: 10,
   reaction: 5,
+  /** Einmaliger Wochenbonus für abgeschlossenen Körper-Check-in. */
+  bodyCheckin: 50,
 } as const;
 
 /** Anti-Spam: maximal so viele Habits/Reaktionen zählen pro Tag. */

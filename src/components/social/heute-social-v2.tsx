@@ -151,7 +151,7 @@ export function HeuteSocialV2({ summary }: Props) {
                   <ArrowRight className="size-3.5 text-dim transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
                 </div>
               </div>
-              <MemberStatusPills status={member.status} />
+              <MemberStatusPills status={member.status} weeklyCheckinDone={member.weeklyCheckinDone} />
             </Link>
           ))}
         </div>
