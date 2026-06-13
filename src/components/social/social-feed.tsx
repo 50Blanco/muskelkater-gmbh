@@ -1,4 +1,4 @@
-import { Dumbbell, CheckCircle2, Repeat2 } from "lucide-react";
+import { Dumbbell, CheckCircle2, Heart, Repeat2 } from "lucide-react";
 import type { FeedEvent, SocialTargetType } from "@/lib/social/get-social-dashboard";
 import { SocialReactionButtons } from "./social-reaction-buttons";
 
@@ -6,6 +6,7 @@ const EVENT_ICONS: Record<SocialTargetType, React.ElementType> = {
   workout_session: Dumbbell,
   daily_mission: CheckCircle2,
   daily_habit_log: Repeat2,
+  member_week: Heart,
 };
 
 function formatRelativeTime(date: Date): string {

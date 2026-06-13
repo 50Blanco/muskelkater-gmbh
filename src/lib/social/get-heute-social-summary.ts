@@ -1,4 +1,7 @@
 import "server-only";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { dailyStepLog } from "@/db/schema";
 import { getTodayBerlin } from "@/lib/utils/date";
 import type { FeedEvent, SocialGroupInfo } from "./get-social-dashboard";
 import { getTeamDashboard } from "./get-team-dashboard";
@@ -35,6 +38,8 @@ export interface HeuteSocialSummary {
   ownOpenSources: PointSource[];
   members: HeuteMemberStatus[];
   feed: FeedEvent[];
+  todaySteps: number | null;
+  todayDate: string;
 }
 
 const HEUTE_FEED_LIMIT = 5;
@@ -43,7 +48,18 @@ const HEUTE_MEMBER_LIMIT = 6;
 export async function getHeuteSocialSummary(
   userId: string,
 ): Promise<HeuteSocialSummary> {
-  const team = await getTeamDashboard(userId);
+  const todayStr = getTodayBerlin();
+
+  const [team, [stepRow]] = await Promise.all([
+    getTeamDashboard(userId),
+    db
+      .select({ steps: dailyStepLog.steps })
+      .from(dailyStepLog)
+      .where(
+        and(eq(dailyStepLog.userId, userId), eq(dailyStepLog.logDate, todayStr)),
+      )
+      .limit(1),
+  ]);
 
   if (!team.hasTeam || !team.group) {
     return {
@@ -57,10 +73,11 @@ export async function getHeuteSocialSummary(
       ownOpenSources: [],
       members: [],
       feed: [],
+      todaySteps: stepRow?.steps ?? null,
+      todayDate: todayStr,
     };
   }
 
-  const todayStr = getTodayBerlin();
   const challengeLabel = team.challenge
     ? buildChallengeLabel(team.challenge, todayStr)
     : null;
@@ -87,5 +104,7 @@ export async function getHeuteSocialSummary(
     ownOpenSources: own ? own.status.openSources : [],
     members,
     feed: team.feed.slice(0, HEUTE_FEED_LIMIT),
+    todaySteps: stepRow?.steps ?? null,
+    todayDate: todayStr,
   };
 }

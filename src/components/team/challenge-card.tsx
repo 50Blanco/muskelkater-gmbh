@@ -1,4 +1,4 @@
-import { Flag, Trophy, Users2 } from "lucide-react";
+import { Flag, Rocket, Trophy, Users2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -22,6 +22,20 @@ function daysLabel(remaining: number): string {
   if (remaining < 0) return "Abgeschlossen";
   if (remaining === 0) return "Letzter Tag";
   return `Noch ${remaining} ${remaining === 1 ? "Tag" : "Tage"}`;
+}
+
+function challengeProgressPct(
+  startsOn: string,
+  endsOn: string,
+  today: string,
+): number {
+  const start = new Date(startsOn).getTime();
+  const end = new Date(endsOn).getTime();
+  const now = new Date(today).getTime();
+  const total = end - start;
+  if (total <= 0) return 100;
+  const elapsed = Math.max(0, Math.min(now - start, total));
+  return Math.round((elapsed / total) * 100);
 }
 
 export function ChallengeCard({
@@ -48,21 +62,42 @@ export function ChallengeCard({
       </CardHeader>
       <CardContent className="space-y-4">
         {challenge ? (
-          <div className="rounded-[var(--radius-sm)] border border-accent/30 bg-accent-soft/40 px-4 py-3.5 space-y-2">
-            <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent">
-              <Trophy className="size-3 shrink-0" />
-              Aktive Challenge
-            </span>
-            <p className="font-display text-base font-semibold text-foreground">
-              {challenge.title}
-            </p>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-              <span>{daysLabel(getChallengeDaysRemaining(challenge.endsOn, today))}</span>
-              <span className="inline-flex items-center gap-1">
-                <Users2 className="size-3 shrink-0" />
-                {memberCount} {memberCount === 1 ? "Teilnehmer" : "Teilnehmer"}
+          <div className="space-y-3 rounded-[var(--radius-sm)] border border-accent/30 bg-accent-soft/40 px-4 py-3.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent">
+                  <Trophy className="size-3 shrink-0" />
+                  Aktive Challenge
+                </span>
+                <p className="font-display text-base font-semibold text-foreground">
+                  {challenge.title}
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full border border-accent/30 bg-accent-soft px-3 py-1 text-sm font-semibold tabular-nums text-accent">
+                {daysLabel(getChallengeDaysRemaining(challenge.endsOn, today))}
               </span>
             </div>
+
+            {/* Fortschrittsbalken */}
+            <div className="space-y-1">
+              <div className="h-1.5 overflow-hidden rounded-full bg-accent/20">
+                <div
+                  className="h-1.5 rounded-full bg-accent transition-all"
+                  style={{
+                    width: `${challengeProgressPct(challenge.startsOn, challenge.endsOn, today)}%`,
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-muted">
+                <span>{challenge.startsOn}</span>
+                <div className="flex items-center gap-1">
+                  <Users2 className="size-3 shrink-0" />
+                  {memberCount} {memberCount === 1 ? "Teilnehmer" : "Teilnehmer"}
+                </div>
+                <span>{challenge.endsOn}</span>
+              </div>
+            </div>
+
             {challenge.stakeText && (
               <p className="flex items-center gap-1.5 text-sm text-muted">
                 <Flag className="size-3.5 shrink-0" />
@@ -71,9 +106,17 @@ export function ChallengeCard({
             )}
           </div>
         ) : (
-          <p className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface/40 px-4 py-4 text-center text-sm text-muted">
-            Noch keine aktive Challenge — startet gemeinsam ein Ziel.
-          </p>
+          <div className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface/40 px-4 py-5 text-center">
+            <span className="mx-auto mb-3 grid size-10 place-items-center rounded-[12px] bg-surface-3 text-muted">
+              <Rocket className="size-5" />
+            </span>
+            <p className="text-sm font-semibold text-foreground">
+              Noch keine aktive Challenge
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              Startet gemeinsam ein Ziel und sammelt Punkte aus eurem Alltag.
+            </p>
+          </div>
         )}
 
         <CreateChallengeForm

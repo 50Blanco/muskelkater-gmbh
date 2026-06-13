@@ -589,6 +589,7 @@ export const socialTargetTypeEnum = pgEnum("social_target_type", [
   "workout_session",
   "daily_mission",
   "daily_habit_log",
+  "member_week",
 ]);
 
 export const challengeStatusEnum = pgEnum("challenge_status", [
