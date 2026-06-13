@@ -12,12 +12,13 @@ Kurze Reports liefern.
 
 ## Aktueller technischer Stand
 
-* **Branch:** `master`
+* **Branch:** `feature/phase-10-team-ux` (noch nicht in master gemergt — warte auf Freigabe)
 * **GitHub Remote:** `https://github.com/50Blanco/muskelkater-gmbh.git`
+* **Phase 10 Commit:** `57ce31b` — `feat: Phase 10 — Team Experience V1`
 * **Phase 9 Merge-Commit:** `95bf2a4` — `merge: Phase 9 — Team challenge MVP`
-* **Letzter Hygiene-Commit:** `7d0d92f` — `chore: ignore local claude config`
 * **Working tree:** clean
-* **Gemergte Phasen:** 1 · 2 · 3 · 4 · 5 · 6 · 7A · 7B/7B1 · 7C · 8 · **9**
+* **Gemergte Phasen:** 1 · 2 · 3 · 4 · 5 · 6 · 7A · 7B/7B1 · 7C · 8 · 9
+* **In Review:** Phase 10
 
 ---
 
@@ -207,24 +208,27 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 
 ---
 
-## Empfohlene nächste Phase
-
-### Phase 10 — Team Experience V1
+### Phase 10 — Team Experience V1 (in Review, Branch: feature/phase-10-team-ux)
 
 **Ziel:** Das Team-Erlebnis stärken, ohne große neue Systeme.
 
-Mögliche Inhalte:
-* Motivation senden klarer gestalten (z.B. dedizierter Push-Button)
-* Schritte schneller auf `/heute` eintragen (Quick-Add-CTA)
-* Team-/Challenge-Status noch deutlicher kommunizieren
-* Member-Detail weiter abrunden
-* Privacy-Grundregeln sichtbar vorbereiten (z.B. Info-Text im Member-Detail)
-* Challenge CTA verbessern (leerer State, Countdown)
+Umgesetzt:
+* **Schritte Quick-Add auf `/heute`** — `StepsInput` direkt in `HeuteSocialV2`; `todaySteps` + `todayDate` in `HeuteSocialSummary`
+* **Challenge CTA & Countdown** — `ChallengeCard` mit verbessertem Leer-State (Icon + Beschreibung) und Fortschrittsbalken im aktiven State
+* **Motivation Push-Button** — `SocialReactionButtons` mit `targetType: "member_week"` auf `/team/[memberId]` statt Platzhalter-Link; neuer Enum-Wert `member_week` (additiv, Migration `phase10_add_member_week_target_type`)
 
-Nicht in Phase 10:
+**Empfohlene nächste Phase:**
+
+### Phase 11 — Fortschritt oder Profil
+
+Kandidaten:
+* Fortschritt-Seite (`/fortschritt`) als echtes Feature (Gewichtsverlauf, Körperdaten, Ziel-Tracking)
+* Profil-Seite aufwerten (Ziele anpassen, Plan wechseln)
+* Privacy-Settings (Sichtbarkeit für Team)
+* Mehrere Teams pro Nutzer
+
+Nicht in Phase 11:
 * kein Food-AI
-* kein Coach
-* keine Fortschritt-Seite als Hauptfeature
 * kein Chat
 * keine Kommentare
 
@@ -270,9 +274,19 @@ npx tsx scripts/qa-phase7b1-smoke.ts
 npx tsx scripts/qa-phase7b-editor-smoke.ts
 npx tsx scripts/qa-phase8-social-smoke.ts
 npx tsx scripts/qa-phase9-team-challenge-smoke.ts
+npx tsx scripts/qa-phase10-ux-smoke.ts
 ```
 
 ---
+
+## Testergebnisse Phase 10
+
+| Check | Ergebnis |
+|-------|----------|
+| `npm run build` | PASS |
+| `npx tsc --noEmit` | PASS |
+| Phase 10 UX Smoke | PASS (17 Tests) |
+| Lint (pre-existing errors in legacy trace-verification.js) | unverändert |
 
 ## Testergebnisse Phase 9
 
