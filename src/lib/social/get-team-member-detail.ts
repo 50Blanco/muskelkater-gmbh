@@ -11,6 +11,7 @@ import {
   calculateWeeklyScore,
   canViewMemberDetail,
   getMemberDailyStatus,
+  POINTS,
   sanitizeSocialMealStatus,
   type MemberDailyStatus,
   type SafeMealStatus,
@@ -136,13 +137,16 @@ export async function getTeamMemberDetail(
     }
   }
 
+  const baseScore = sig ? calculateWeeklyScore(sig.days) : 0;
+  const checkinBonus = sig?.weeklyCheckinDone ? POINTS.bodyCheckin : 0;
+
   return {
     userId: targetUserId,
     displayName,
     isCurrentUser: targetUserId === viewerUserId,
     groupId: social.activeGroup.id,
     today,
-    weeklyScore: sig ? calculateWeeklyScore(sig.days) : 0,
+    weeklyScore: baseScore + checkinBonus,
     week,
     meals: sanitizeSocialMealStatus(todayNutrition?.mealsStatus),
     motivationReactions,

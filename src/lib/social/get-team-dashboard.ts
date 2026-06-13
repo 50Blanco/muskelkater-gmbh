@@ -17,6 +17,7 @@ import {
   calculateWeeklyScore,
   findOwnRank,
   getMemberDailyStatus,
+  POINTS,
   type LeaderboardEntry,
   type MemberDailyStatus,
   type MemberDailyStatusInput,
@@ -38,6 +39,7 @@ export interface TeamMemberCard {
   rank: number;
   isCurrentUser: boolean;
   status: MemberDailyStatus;
+  weeklyCheckinDone: boolean;
 }
 
 export interface TeamDashboardData {
@@ -94,9 +96,12 @@ export async function getTeamDashboard(
 
   const scored = social.members.map((m) => {
     const sig = signals.get(m.userId);
-    const weeklyScore = sig ? calculateWeeklyScore(sig.days) : 0;
+    const baseScore = sig ? calculateWeeklyScore(sig.days) : 0;
+    const checkinBonus = sig?.weeklyCheckinDone ? POINTS.bodyCheckin : 0;
+    const weeklyScore = baseScore + checkinBonus;
     const status = getMemberDailyStatus(sig ? sig.today : EMPTY_TODAY);
-    return { ...m, weeklyScore, status };
+    const weeklyCheckinDone = sig?.weeklyCheckinDone ?? false;
+    return { ...m, weeklyScore, status, weeklyCheckinDone };
   });
 
   const leaderboard = buildLeaderboard(
@@ -118,6 +123,7 @@ export async function getTeamDashboard(
       rank: rankByUser.get(s.userId) ?? 0,
       isCurrentUser: s.userId === userId,
       status: s.status,
+      weeklyCheckinDone: s.weeklyCheckinDone,
     }))
     .sort(
       (a, b) =>

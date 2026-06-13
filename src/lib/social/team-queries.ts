@@ -8,9 +8,10 @@ import {
   nutritionTarget,
   socialReaction,
   teamChallenge,
+  weeklyBodyCheckin,
   workoutSession,
 } from "@/db/schema";
-import { lastNDateStrings, toBerlinDate } from "@/lib/utils/date";
+import { getWeekMondayIso, lastNDateStrings, toBerlinDate } from "@/lib/utils/date";
 import type { ChallengeStatus } from "@/lib/validation/challenge";
 import {
   isStepsGoalReached,
@@ -68,6 +69,8 @@ export interface MemberWeeklySignals {
   days: DailyScoreInput[];
   /** Heutige Signale inkl. Schritte (für Member-Karten). */
   today: MemberDailyStatusInput;
+  /** Wöchentlicher Check-in diese Woche erledigt (Bonus +50 Punkte). */
+  weeklyCheckinDone: boolean;
 }
 
 interface DayAccumulator {
@@ -111,7 +114,9 @@ export async function loadMemberWeeklySignals(
   const [sy, sm, sd] = sinceStr.split("-").map(Number);
   const tsLowerBound = new Date(Date.UTC(sy, sm - 1, sd - 1));
 
-  const [workouts, nutritionLogs, habitLogs, stepLogs, reactions, targets] =
+  const thisWeekMonday = getWeekMondayIso(todayStr);
+
+  const [workouts, nutritionLogs, habitLogs, stepLogs, reactions, targets, checkins] =
     await Promise.all([
       db
         .select({
@@ -192,10 +197,21 @@ export async function loadMemberWeeklySignals(
             eq(nutritionTarget.active, true),
           ),
         ),
+      db
+        .select({ userId: weeklyBodyCheckin.userId })
+        .from(weeklyBodyCheckin)
+        .where(
+          and(
+            inArray(weeklyBodyCheckin.userId, memberUserIds),
+            eq(weeklyBodyCheckin.weekDate, thisWeekMonday),
+          ),
+        ),
     ]);
 
   const waterTargetByUser = new Map<string, number>();
   for (const t of targets) waterTargetByUser.set(t.userId, t.waterMl);
+
+  const checkinDoneSet = new Set(checkins.map((c) => c.userId));
 
   // member -> dateStr -> accumulator
   const acc = new Map<string, Map<string, DayAccumulator>>();
@@ -268,7 +284,7 @@ export async function loadMemberWeeklySignals(
       steps: todayAcc.steps,
     };
 
-    result.set(uid, { days, today });
+    result.set(uid, { days, today, weeklyCheckinDone: checkinDoneSet.has(uid) });
   }
 
   return result;

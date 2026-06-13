@@ -752,3 +752,32 @@ export const dailyStepLog = pgTable(
     ownerPolicy("daily_step_log", t.userId),
   ],
 );
+
+/* ------------------------------------------------------------------ */
+/* Körper-Check-in (Phase 11)                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wöchentlicher Completion-Record für den Körper-Check-in.
+ * Speichert NUR den Status (erledigt / Wochendatum) — KEINE Messwerte.
+ * Messwerte bleiben in bodyMetrics / bodyMeasurement (nur der Eigentümer sieht sie).
+ * week_date = ISO-Montag der jeweiligen Woche.
+ * Social-/Team-Layer liest nur diesen Record (nie bodyMetrics/bodyMeasurement).
+ */
+export const weeklyBodyCheckin = pgTable(
+  "weekly_body_checkin",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: userId(),
+    weekDate: date("week_date", { mode: "string" }).notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    unique("uq_weekly_body_checkin").on(t.userId, t.weekDate),
+    index("idx_weekly_body_checkin_user").on(t.userId),
+    index("idx_weekly_body_checkin_week").on(t.userId, t.weekDate),
+    ownerPolicy("weekly_body_checkin", t.userId),
+  ],
+);

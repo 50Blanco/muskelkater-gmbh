@@ -37,3 +37,15 @@ export function addDaysToIso(iso: string, n: number): string {
     .toISOString()
     .slice(0, 10);
 }
+
+/**
+ * ISO-Montag der Woche, in der `isoDate` liegt (YYYY-MM-DD), UTC-stabil.
+ * ISO-8601: Woche beginnt am Montag (1), Sonntag = 7.
+ */
+export function getWeekMondayIso(isoDate: string): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const utcMs = Date.UTC(y, m - 1, d);
+  const jsDay = new Date(utcMs).getUTCDay(); // 0=So, 1=Mo, …, 6=Sa
+  const daysFromMonday = jsDay === 0 ? 6 : jsDay - 1;
+  return new Date(utcMs - daysFromMonday * 86_400_000).toISOString().slice(0, 10);
+}
