@@ -10,7 +10,7 @@ export function MobileTabbar() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/85 backdrop-blur-lg md:hidden">
-      <ul className="mx-auto grid max-w-lg grid-cols-6">
+      <ul className="mx-auto grid max-w-xl grid-cols-7">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
@@ -18,12 +18,12 @@ export function MobileTabbar() {
               <Link
                 href={href}
                 className={cn(
-                  "flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors",
+                  "flex min-w-0 flex-col items-center gap-1 px-0.5 py-2.5 text-[9px] font-medium transition-colors",
                   active ? "text-accent" : "text-dim hover:text-muted",
                 )}
               >
                 <Icon className="size-5" />
-                <span>{label}</span>
+                <span className="w-full truncate text-center">{label}</span>
               </Link>
             </li>
           );

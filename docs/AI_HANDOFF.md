@@ -93,6 +93,19 @@ Kurze Reports liefern.
 * Smoke-Script: `scripts/qa-phase8-social-smoke.ts` — 34 Tests
 * Merge-Commit: `ebdd546`
 
+### Phase 9 — Team Challenge MVP (Branch `phase-9-team-challenge-mvp`, NICHT gemergt)
+
+* Neue Produktthese: Community-/Team-Challenge-App mit Trainingshilfe. UI-Begriff durchgängig **„Team"** (intern weiterhin `social_group`).
+* Migration `0004_phase9_team_challenge_steps.sql` (additiv, live angewendet):
+  `team_challenge` (Membership-basierte RLS) + `daily_step_log` (Owner-RLS) + Enum `challenge_status`.
+* Neue Routen: `/team` (Community-Zentrale) und `/team/[memberId]` (sicherer Wochenstatus, kein notFound für Fremde).
+* `/heute` Social V2: Challenge-Zusammenfassung, eigene Platzierung, „Heute offen", Team-Statuskarten, kompakter Feed (ersetzt `SocialDashboardCard`/`GroupMembers` — gelöscht).
+* Navigation: 7 Tabs (Heute · **Team** · Training · Ernährung · Fortschritt · Coach · Profil).
+* Pure Logik: `src/lib/social/challenge-scoring.ts` (Scoring, Soft-Leaderboard, Support-Hinweise, Challenge-Label, Privacy-Mapper) — voll getestet.
+* Server: `team-queries.ts`, `get-team-dashboard.ts`, `get-team-member-detail.ts`, `get-heute-social-summary.ts`; Actions `createTeamChallenge`, `updateMyDailySteps`.
+* Punktesystem (aus vorhandenen Signalen): Workout +30 · Schritte (Ziel 8.000) +20 · Ernährung +15 · Wasser +10 · Habit +10 (Cap 3) · Reaktion +5 (Cap 3). Keine Punkte aus Gewicht/Maßen/Kalorien/Protein.
+* Smoke-Script: `scripts/qa-phase9-team-challenge-smoke.ts` — 53 Tests.
+
 ---
 
 ## Wichtige Commits
@@ -274,6 +287,7 @@ npx tsx scripts/qa-phase5-smoke.ts
 npx tsx scripts/qa-phase7b1-smoke.ts
 npx tsx scripts/qa-phase7b-editor-smoke.ts
 npx tsx scripts/qa-phase8-social-smoke.ts
+npx tsx scripts/qa-phase9-team-challenge-smoke.ts
 ```
 
 ---
@@ -282,10 +296,11 @@ npx tsx scripts/qa-phase8-social-smoke.ts
 
 * Turbopack Cache-Probleme: `npm run dev:clean`
 * Workout-Session: kein Autosave, Sätze erst beim Abschluss
-* Schritte noch nicht getrackt
+* Schritte: ab Phase 9 manuell trackbar (`daily_step_log`); keine Wearables
 * Fortschritt-Seite: Placeholder
 * Coach-Seite: Placeholder
-* Social V2: Mitglieder-Statuskarten fehlen noch
+* Phase 9: „aktives Team" = erste Gruppe des Nutzers (Mehrfach-Teams-UI offen)
+* Mahlzeiten-Detail im Member-Detail bewusst nur als Häkchen-Zähler (kein Beschreibungsfeld im Schema → nichts erfunden)
 
 ---
 

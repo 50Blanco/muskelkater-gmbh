@@ -591,6 +591,12 @@ export const socialTargetTypeEnum = pgEnum("social_target_type", [
   "daily_habit_log",
 ]);
 
+export const challengeStatusEnum = pgEnum("challenge_status", [
+  "active",
+  "completed",
+  "cancelled",
+]);
+
 /** Trainingsgruppe / Crew. Jeder Nutzer kann mehrere Gruppen haben. */
 export const socialGroup = pgTable(
   "social_group",
@@ -667,5 +673,81 @@ export const socialReaction = pgTable(
     index("idx_social_reaction_group").on(t.groupId),
     index("idx_social_reaction_target").on(t.targetType, t.targetId),
     ownerPolicy("social_reaction", t.userId),
+  ],
+);
+
+/* ------------------------------------------------------------------ */
+/* Team-Challenge (Phase 9)                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Team-Challenge: ein Wettkampf-Zeitraum pro Gruppe.
+ * MVP-Regel: eine aktive Challenge je Gruppe (Loader nimmt die neueste aktive).
+ * Einsatz ist nur ein Freitext (`stake_text`) — keine Zahlungen, keine Wettabwicklung.
+ *
+ * RLS (Defense-in-Depth zusätzlich zur serverseitigen Membership-Prüfung):
+ *  - SELECT: nur Mitglieder der zugehörigen Gruppe.
+ *  - INSERT: nur Mitglieder und nur im eigenen Namen (created_by == auth.uid()).
+ *  - UPDATE: nur Mitglieder (z. B. Status auf "completed" setzen).
+ * Die Membership wird über eine Subquery auf social_group_member geprüft; diese
+ * Subquery sieht durch die social_group_member-Policy nur die eigene Mitgliedschaft.
+ */
+export const teamChallenge = pgTable(
+  "team_challenge",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => socialGroup.id, { onDelete: "cascade" }),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    stakeText: text("stake_text"),
+    startsOn: date("starts_on", { mode: "string" }).notNull(),
+    endsOn: date("ends_on", { mode: "string" }).notNull(),
+    status: challengeStatusEnum("status").default("active").notNull(),
+    mode: text("mode").default("leaderboard").notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    index("idx_team_challenge_group").on(t.groupId),
+    index("idx_team_challenge_status").on(t.groupId, t.status),
+    pgPolicy("team_challenge_member_select", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`exists (select 1 from social_group_member m where m.group_id = ${t.groupId} and m.user_id = (select auth.uid()))`,
+    }),
+    pgPolicy("team_challenge_member_insert", {
+      for: "insert",
+      to: authenticatedRole,
+      withCheck: sql`${t.createdByUserId} = (select auth.uid()) and exists (select 1 from social_group_member m where m.group_id = ${t.groupId} and m.user_id = (select auth.uid()))`,
+    }),
+    pgPolicy("team_challenge_member_update", {
+      for: "update",
+      to: authenticatedRole,
+      using: sql`exists (select 1 from social_group_member m where m.group_id = ${t.groupId} and m.user_id = (select auth.uid()))`,
+      withCheck: sql`exists (select 1 from social_group_member m where m.group_id = ${t.groupId} and m.user_id = (select auth.uid()))`,
+    }),
+  ],
+);
+
+/**
+ * Manuelle Schritteingabe pro Tag (Phase 9 MVP — keine Wearables).
+ * Eine Zeile pro Nutzer und Tag (Upsert). Nur der Eigentümer liest/schreibt (RLS).
+ */
+export const dailyStepLog = pgTable(
+  "daily_step_log",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: userId(),
+    logDate: date("log_date", { mode: "string" }).notNull(),
+    steps: integer("steps").notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    unique("uq_daily_step_log").on(t.userId, t.logDate),
+    index("idx_daily_step_log_user").on(t.userId),
+    ownerPolicy("daily_step_log", t.userId),
   ],
 );
