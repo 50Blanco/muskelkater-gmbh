@@ -13,9 +13,26 @@ Kurze Reports liefern.
 ## Aktueller technischer Stand
 
 * **Branch:** `master`
-* **Letzter Commit:** `ebdd546` — `merge: Phase 8 — Social dashboard MVP`
+* **GitHub Remote:** `https://github.com/50Blanco/muskelkater-gmbh.git`
+* **Phase 9 Merge-Commit:** `95bf2a4` — `merge: Phase 9 — Team challenge MVP`
+* **Letzter Hygiene-Commit:** `7d0d92f` — `chore: ignore local claude config`
 * **Working tree:** clean
-* **Gemergte Phasen:** 1 · 2 · 3 · 4 · 5 · 6 · 7A · 7C · 7B/7B1 · 8
+* **Gemergte Phasen:** 1 · 2 · 3 · 4 · 5 · 6 · 7A · 7B/7B1 · 7C · 8 · **9**
+
+---
+
+## Produktthese
+
+**MUSKELKATER GMBH ist eine private Team-/Community-Challenge-App mit Trainingshilfe.**
+
+Training, Ernährung, Wasser, Habits und Schritte sind Signale für:
+- Teamstatus
+- Punkte
+- Motivation
+- Challenge-Fortschritt
+
+**Der Hauptgrund, die App täglich zu öffnen:**
+Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren → dranbleiben.
 
 ---
 
@@ -70,11 +87,6 @@ Kurze Reports liefern.
 * Suche und Filter
 * Custom Exercises sauber angebunden
 
-### Phase 7C — Trainingstagebuch
-
-* Sichtbares Workout-History-Tagebuch
-* Vergangene Sessions, Sätze, Gewichte einsehbar
-
 ### Phase 7B / 7B1 — Plan-Editor MVP
 
 * Übungen zu Trainingstagen hinzufügen (`52e0110`, Merge `943143a`)
@@ -83,28 +95,44 @@ Kurze Reports liefern.
 * ExerciseSearchPicker, ExerciseActions, ExerciseRow refactored
 * Smoke-Script: `scripts/qa-phase7b-editor-smoke.ts` — 33 Tests
 
+### Phase 7C — Trainingstagebuch
+
+* Sichtbares Workout-History-Tagebuch
+* Vergangene Sessions, Sätze, Gewichte einsehbar
+
 ### Phase 8 — Social Dashboard MVP
 
 * `social_group`, `social_group_member`, `social_reaction` + RLS (Migration `0003_silly_bushwacker.sql`)
 * Server Actions: `createSocialGroup`, `joinSocialGroupByCode`, `reactToSocialEvent`
 * Loader: `src/lib/social/get-social-dashboard.ts` (server-only)
-* UI: `social-dashboard-card`, `create-group-form`, `join-group-form`, `social-feed`, `social-reaction-buttons`, `group-members`
-* Fix `f816a04`: `groupId` aus try-Block korrekt zurückgegeben
+* UI: `social-feed`, `social-reaction-buttons`, `create-group-form`, `join-group-form`
 * Smoke-Script: `scripts/qa-phase8-social-smoke.ts` — 34 Tests
 * Merge-Commit: `ebdd546`
 
-### Phase 9 — Team Challenge MVP (Branch `phase-9-team-challenge-mvp`, NICHT gemergt)
+### Phase 9 — Team Challenge MVP
 
-* Neue Produktthese: Community-/Team-Challenge-App mit Trainingshilfe. UI-Begriff durchgängig **„Team"** (intern weiterhin `social_group`).
-* Migration `0004_phase9_team_challenge_steps.sql` (additiv, live angewendet):
-  `team_challenge` (Membership-basierte RLS) + `daily_step_log` (Owner-RLS) + Enum `challenge_status`.
-* Neue Routen: `/team` (Community-Zentrale) und `/team/[memberId]` (sicherer Wochenstatus, kein notFound für Fremde).
-* `/heute` Social V2: Challenge-Zusammenfassung, eigene Platzierung, „Heute offen", Team-Statuskarten, kompakter Feed (ersetzt `SocialDashboardCard`/`GroupMembers` — gelöscht).
-* Navigation: 7 Tabs (Heute · **Team** · Training · Ernährung · Fortschritt · Coach · Profil).
-* Pure Logik: `src/lib/social/challenge-scoring.ts` (Scoring, Soft-Leaderboard, Support-Hinweise, Challenge-Label, Privacy-Mapper) — voll getestet.
-* Server: `team-queries.ts`, `get-team-dashboard.ts`, `get-team-member-detail.ts`, `get-heute-social-summary.ts`; Actions `createTeamChallenge`, `updateMyDailySteps`.
-* Punktesystem (aus vorhandenen Signalen): Workout +30 · Schritte (Ziel 8.000) +20 · Ernährung +15 · Wasser +10 · Habit +10 (Cap 3) · Reaktion +5 (Cap 3). Keine Punkte aus Gewicht/Maßen/Kalorien/Protein.
-* Smoke-Script: `scripts/qa-phase9-team-challenge-smoke.ts` — 53 Tests.
+* **Neue Produktthese** — UI-Begriff durchgängig **„Team"** (DB: `social_group`).
+* **Migration** `drizzle/0004_phase9_team_challenge_steps.sql` (additiv, live angewendet):
+  * `team_challenge` — Membership-basierte RLS (SELECT/INSERT/UPDATE nur für Gruppenmitglieder)
+  * `daily_step_log` — Owner-RLS (Nutzer sieht und schreibt nur eigene Einträge)
+  * Enum `challenge_status`
+* **Neue Routen:**
+  * `/team` — Team-Zentrale: Mitgliederübersicht, Rangliste (ab 2 Mitgliedern), Challenge-Karte, Support-Hints, kompakter Feed
+  * `/team/[memberId]` — Sicherer Wochenstatus pro Mitglied (keine sensiblen Körperdaten, Privacy by default)
+* **`/heute` Social V2:** Challenge-Zusammenfassung, eigene Platzierung, offene Signale, Team-Statuskarten, kompakter Feed (ersetzt `SocialDashboardCard`/`GroupMembers`)
+* **Navigation:** 7 Tabs — Heute · **Team** · Training · Ernährung · Fortschritt · Coach · Profil
+* **Punktesystem** (aus vorhandenen Signalen, keine neuen Inputs):
+  * Workout +30 · Schritte (Ziel 8.000) +20 · Ernährung +15 · Wasser +10 · Habit +10 (Cap 3) · Reaktion +5 (Cap 3)
+  * Keine Punkte aus Gewicht / Maßen / Kalorien / Protein
+* **Soft Ranking** — Rangliste zeigt Wochenpunkte, nur motivierend gemeint, kein toxischer Vergleich
+* **Challenge** — Titel, Laufzeit, optionaler Einsatz-Text (Spaß, kein echtes Geld/Payment/Gambling)
+* **Manuelle Schritte** — `updateMyDailySteps` Server Action, Zod-validiert, `daily_step_log` mit Unique-Constraint
+* **1-Mitglied-Hinweis** — Banner mit Invite-Code, wenn Team nur einen Nutzer hat
+* **Member-Verlaufsdiagramm** — CSS-Balkendiagramm (7 Tage), kein neues npm-Paket
+* **Pure Logik:** `src/lib/social/challenge-scoring.ts` — Scoring, Soft-Leaderboard, Support-Hinweise, Challenge-Label, Privacy-Mapper
+* **Server:** `team-queries.ts`, `get-team-dashboard.ts`, `get-team-member-detail.ts`, `get-heute-social-summary.ts`
+* **Smoke-Script:** `scripts/qa-phase9-team-challenge-smoke.ts` — 28 Tests (nach finaler Bereinigung)
+* **Merge-Commit:** `95bf2a4`
 
 ---
 
@@ -112,11 +140,14 @@ Kurze Reports liefern.
 
 | Commit | Beschreibung |
 |--------|-------------|
+| `7d0d92f` | chore: ignore local claude config |
+| `95bf2a4` | merge: Phase 9 — Team challenge MVP |
+| `eb2eeed` | fix: improve team member progress UX |
+| `00541f8` | fix: improve team page community UX |
+| `88fdfd9` | fix: improve today team dashboard UX |
+| `0d2cd23` | feat: add team challenge MVP |
 | `ebdd546` | merge: Phase 8 — Social dashboard MVP |
-| `f816a04` | fix: finalize social group creation return |
-| `ce7865b` | feat: add social dashboard MVP |
 | `821f9fa` | merge: Phase 7B — Plan editor MVP |
-| `08cfb63` | feat: add workout day exercise editing |
 | `943143a` | merge: Phase 7B1 — Add exercises to workout days |
 | `067a7c9` | merge: Phase 7C — Workout history in master |
 | `0284e4e` | merge: Phase 7A — Exercise library in master |
@@ -131,7 +162,7 @@ Kurze Reports liefern.
 ## Was aktuell funktioniert
 
 * Onboarding (7 Schritte, Safety, Plan-Generierung)
-* Heute-Dashboard (Missions, Habits, Ernährung, Mini-Cards)
+* Heute-Dashboard mit Social V2 (Team-Status, Challenge, offene Signale, Feed)
 * Training: Trainingsplan ansehen, Workout starten/abschließen
 * Trainingstagebuch: vergangene Sessions einsehen
 * Übungsbibliothek: suchen, filtern, hinzufügen
@@ -139,113 +170,63 @@ Kurze Reports liefern.
 * Übungen zu Trainingstag hinzufügen / entfernen / ersetzen / Sets-Reps anpassen
 * Ernährung Basis: Protein, Wasser, Mahlzeiten
 * Habits abhaken
-* Social-Gruppe erstellen (Invite-Code wird generiert)
-* Gruppe per Invite-Code beitreten
-* Social Feed (letzte 7 Tage / 30 Events)
+* Team erstellen (Invite-Code), beitreten
+* `/team` — Mitgliederübersicht, Rangliste, Challenge-Karte, Support-Hints, Feed
+* `/team/[memberId]` — sicherer Wochenstatus, Summary-Stats, Balkendiagramm, Signale
+* Team-Challenge starten (Titel, Laufzeit, optionaler Einsatz-Text)
+* Manuelle Schritte auf `/team/[memberId]` eintragen
 * Reaktionen (stark / weiter so / respekt) — Toggle
 
 ---
 
-## Aktuelle Produktentscheidung
+## Produktregeln (unveränderlich)
 
-**Sehr wichtig — bitte für alle Planungen berücksichtigen.**
-
-Die App soll **nicht nur** eine Trainings-App sein.
-
-### Neue Produktthese
-
-**MUSKELKATER GMBH wird primär eine soziale Accountability-App für kleine Gruppen / Familie / Freunde.**
-
-* Social ist der **tägliche Rückkehrgrund**.
-* Training, Ernährung und Habits liefern die **Signale**.
-* Heute-Dashboard soll **Team-Status + eigenen Tag** zeigen.
-* Fortschritt soll **persönliche und Team-Entwicklung** zeigen.
-* Coach soll **persönliche und soziale nächste Schritte** empfehlen.
-* Food-Photo-AI bleibt langfristig wichtig, aber noch **nicht jetzt**.
+* **UI-Begriff:** „Team" — keine öffentliche „Community"
+* Keine toxischen Leaderboards (Soft Ranking nur motivierend)
+* Keine sensiblen Körperdaten im Team-Bereich (kein Gewicht, Umfänge, Kalorien, Protein)
+* Health- und Safety-Daten bleiben privat
+* Keine echte Wett-/Geld-/Payment-Logik — nur Einsatz-Text als Spaß-Feature
+* Team-Challenge statt Wette
+* Food-AI: später, nicht jetzt
+* Coach: später, nicht jetzt
+* Fortschritt-Seite als Hauptfeature: später, nicht jetzt
 
 ---
 
-## Beobachtungen aus manuellem Test
+## Bekannte offene Punkte
 
-* Fortschritt-Seite (`/fortschritt`) ist aktuell **Placeholder**
-* Coach-Seite (`/coach`) ist aktuell **Placeholder**
-* Social-Bereich funktioniert, ist aber **zu feed-lastig**
-* Gruppenheader / Invite-Code nimmt **zu viel Raum** ein
-* Es fehlt eine echte **Team-Mitglieder-Übersicht**
-* Mitglieder sollten **klickbar** werden
-* Pro Mitglied sollen **Tagesstatus und Wochenfortschritt** sichtbar werden
-* Gewünschte Signale pro Mitglied:
-  * Training heute ja/nein
-  * Schritte (grob)
-  * Ernährung grob
-  * Habits / Missions
-  * Motivation / Reaktionen
-  * Wochenfortschritt
+* Mehrere Teams pro Nutzer — UI noch nicht gelöst (aktives Team = erste Gruppe)
+* Challenge-Historie fehlt
+* Individuelle Challenge-Ziele fehlen
+* Motivation / Push-Actions vorbereitet, aber noch keine echten Social-Actions pro Mitglied
+* Fortschritt-Seite (`/fortschritt`) — Placeholder
+* Coach-Seite (`/coach`) — Placeholder
+* Nutrition — Basis funktioniert; keine Food-Photo-AI
+* Privacy- und Sichtbarkeits-Settings — noch nicht gebaut
+* Schritte: manuell trackbar; keine Wearable-Anbindung
 
 ---
 
-## Wichtige Produktregeln für Social
+## Empfohlene nächste Phase
 
-Diese Regeln gelten für alle zukünftigen Social-Features:
+### Phase 10 — Team Experience V1
 
-* Kein toxischer Vergleich
-* Keine harten Leaderboards (zumindest nicht zuerst)
-* Keine öffentlichen Profile
-* Kein Chat (zumindest nicht zuerst)
-* Keine sensiblen Körperdaten im Feed
-* Kein Gewicht, Bauchumfang, Armumfang im Social-Default
-* Keine Kalorien- / Protein-Details standardmäßig teilen
-* **Privacy by default**
-* Social soll **motivieren**, nicht beschämen
+**Ziel:** Das Team-Erlebnis stärken, ohne große neue Systeme.
 
----
+Mögliche Inhalte:
+* Motivation senden klarer gestalten (z.B. dedizierter Push-Button)
+* Schritte schneller auf `/heute` eintragen (Quick-Add-CTA)
+* Team-/Challenge-Status noch deutlicher kommunizieren
+* Member-Detail weiter abrunden
+* Privacy-Grundregeln sichtbar vorbereiten (z.B. Info-Text im Member-Detail)
+* Challenge CTA verbessern (leerer State, Countdown)
 
-## Geplante nächste Themen — nur Planung, noch nicht bauen
-
-### 1. Social Dashboard V2
-
-* Kompakter Gruppenheader (Name + Invite-Code zusammengeklappt)
-* Mitglieder-Statuskarten (Training heute, Habit, Mood)
-* Feed nach unten verschieben (nicht mehr der erste Block)
-* Support-Hinweise / Motivations-Nudges
-
-### 2. Member Detail
-
-* Klickbares Mitglied → eigene Seite / Drawer
-* Wochenansicht: Trainingstage, Schritte, Ernährung grob, Streak/Momentum
-* Reaktionen / Motivationsnachrichten an Mitglieder
-
-### 3. Fortschritt-Seite
-
-* Tab „Ich": eigene Konsistenz, Wochenverlauf, Trainingsverlauf
-* Tab „Team": Team-Konsistenz, kein Körperdaten-Vergleich
-* Keine sensiblen Team-Körperdaten sichtbar
-
-### 4. Coach
-
-* Persönlicher Coach: nächste Schritte für den Nutzer
-* Sozialer Coach: Team-Hinweise, Motivation
-* Wochen-Coach: Rückblick und Ausblick
-* Erstmal regelbasiert — kein KI-Chat
-
-### 5. Später
-
-* Schritte: erst manuell, dann Wearable-Anbindung prüfen
-* Ernährung sozial verbessern
-* Food-Photo-AI vorbereiten
-* Food-Photo-AI bauen
-
----
-
-## Was ausdrücklich NICHT als nächstes gebaut werden soll
-
-* Kein kompletter Chat
-* Keine Community / öffentliche Profile
-* Keine Leaderboards / Rankings
-* Kein Food-AI sofort
-* Kein generischer KI-Coach-Chat
-* Kein Dashboard-Komplettumbau ohne Plan
-* **Keine weitere Implementierung ohne vorherige Produktplanung und Nutzerfreigabe**
+Nicht in Phase 10:
+* kein Food-AI
+* kein Coach
+* keine Fortschritt-Seite als Hauptfeature
+* kein Chat
+* keine Kommentare
 
 ---
 
@@ -262,6 +243,7 @@ Diese Regeln gelten für alle zukünftigen Social-Features:
 * Keine `.claude-plugin`-Dateien ändern
 * Keine ECC-Konfiguration ändern
 * Keine Secrets ausgeben
+* Kein Gewicht/Maße/Kalorien/Protein in Social-Payload
 
 ---
 
@@ -292,29 +274,36 @@ npx tsx scripts/qa-phase9-team-challenge-smoke.ts
 
 ---
 
+## Testergebnisse Phase 9
+
+| Check | Ergebnis |
+|-------|----------|
+| `npm run build` | PASS |
+| `npm run lint` | PASS |
+| `npx tsc --noEmit` | PASS |
+| Phase 8 Social Smoke | PASS (34 Tests) |
+| Phase 9 Challenge Smoke | PASS (28 Tests) |
+| Manueller Test `/heute` | PASS |
+| Manueller Test `/team` | PASS |
+| Manueller Test `/team/[memberId]` | PASS |
+| Mobile ~390px | PASS |
+
+---
+
 ## Bekannte technische Schulden
 
 * Turbopack Cache-Probleme: `npm run dev:clean`
 * Workout-Session: kein Autosave, Sätze erst beim Abschluss
-* Schritte: ab Phase 9 manuell trackbar (`daily_step_log`); keine Wearables
+* Schritte: manuell über `daily_step_log`; keine Wearables
 * Fortschritt-Seite: Placeholder
 * Coach-Seite: Placeholder
-* Phase 9: „aktives Team" = erste Gruppe des Nutzers (Mehrfach-Teams-UI offen)
-* Mahlzeiten-Detail im Member-Detail bewusst nur als Häkchen-Zähler (kein Beschreibungsfeld im Schema → nichts erfunden)
+* Aktives Team = erste Gruppe des Nutzers (Mehrfach-Teams-UI offen)
+* Mahlzeiten-Detail im Member-Detail: Häkchen-Zähler (kein Beschreibungsfeld im Schema)
 
 ---
 
-## Nächste Session soll so starten
+## Nächste Session
 
 **Die nächste Claude-Session soll zuerst `docs/AI_HANDOFF.md` lesen und danach im Planungsmodus arbeiten.**
-
-Ziel der nächsten Session:
-**Informationsarchitektur und Produktplan** für:
-
-* `/heute` (Social Dashboard V2 + eigener Tag)
-* Social Dashboard V2 (Mitglieder-Statuskarten)
-* Member Detail (klickbare Mitglieder)
-* `/fortschritt` (Ich-Tab + Team-Tab)
-* `/coach` (regelbasiert, kein KI-Chat)
 
 **Erst nach expliziter Freigabe durch den Nutzer darf wieder Code gebaut werden.**
