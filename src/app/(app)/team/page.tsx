@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Activity, LifeBuoy, Trophy, Users2 } from "lucide-react";
+import { Activity, Clock, LifeBuoy, Trophy, Users2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getTeamDashboard } from "@/lib/social/get-team-dashboard";
 import { addDaysToIso, getTodayBerlin } from "@/lib/utils/date";
@@ -14,6 +14,7 @@ import {
 import { TeamHeader } from "@/components/team/team-header";
 import { TeamEmptyState } from "@/components/team/team-empty-state";
 import { ChallengeCard } from "@/components/team/challenge-card";
+import { ChallengeHistory } from "@/components/team/challenge-history";
 import { TeamLeaderboard } from "@/components/team/team-leaderboard";
 import { MemberCard } from "@/components/team/member-card";
 import { SupportHints } from "@/components/team/support-hints";
@@ -126,6 +127,25 @@ export default async function TeamPage() {
               </CardHeader>
               <CardContent>
                 <SupportHints hints={data.supportHints} />
+              </CardContent>
+            </Card>
+          )}
+
+          {data.pastChallenges.length > 0 && (
+            <Card>
+              <CardHeader className="flex-row items-center gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-surface-3 text-muted">
+                  <Clock className="size-5" />
+                </span>
+                <div>
+                  <CardTitle className="text-base">Frühere Challenges</CardTitle>
+                  <p className="text-xs text-muted">
+                    Abgeschlossene Challenges des Teams.
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ChallengeHistory challenges={data.pastChallenges} />
               </CardContent>
             </Card>
           )}

@@ -3,8 +3,23 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Trophy } from "lucide-react";
+import { addDaysToIso } from "@/lib/utils/date";
 import { Button } from "@/components/ui/button";
 import { createTeamChallenge } from "@/app/(app)/team/actions";
+
+interface Template {
+  label: string;
+  days: number;
+  stakeText: string;
+}
+
+const CHALLENGE_TEMPLATES: Template[] = [
+  { label: "7 Tage Neustart", days: 7, stakeText: "" },
+  { label: "30 Tage durchziehen", days: 30, stakeText: "" },
+  { label: "Schritte-Woche", days: 7, stakeText: "Meiste Schritte gewinnt" },
+  { label: "Training & Check-in", days: 14, stakeText: "" },
+  { label: "Team-Konstanz", days: 21, stakeText: "" },
+];
 
 interface Props {
   groupId: string;
@@ -60,6 +75,12 @@ export function CreateChallengeForm({
     });
   };
 
+  const applyTemplate = (tpl: Template) => {
+    setTitle(tpl.label);
+    setEndsOn(addDaysToIso(defaultStart, tpl.days));
+    if (tpl.stakeText) setStakeText(tpl.stakeText);
+  };
+
   if (!open) {
     return (
       <Button
@@ -76,6 +97,23 @@ export function CreateChallengeForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      {/* Vorlagen */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium text-muted">Vorlage wählen</p>
+        <div className="flex flex-wrap gap-1.5">
+          {CHALLENGE_TEMPLATES.map((tpl) => (
+            <button
+              key={tpl.label}
+              type="button"
+              onClick={() => applyTemplate(tpl)}
+              className="rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-medium text-muted hover:border-accent/40 hover:text-accent"
+            >
+              {tpl.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-1.5">
         <label className="block text-xs font-medium text-muted">Titel</label>
         <input

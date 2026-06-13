@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne } from "drizzle-orm";
 import { db } from "@/db";
 import {
   dailyHabitLog,
@@ -37,6 +37,43 @@ export interface ActiveChallenge {
   endsOn: string;
   status: ChallengeStatus;
   createdByUserId: string;
+}
+
+export interface ChallengeHistoryEntry {
+  id: string;
+  title: string;
+  startsOn: string;
+  endsOn: string;
+  status: ChallengeStatus;
+  stakeText: string | null;
+}
+
+/**
+ * Abgeschlossene/abgebrochene Challenges einer Gruppe, neueste zuerst.
+ * Liefert keine aktiven Challenges (die werden separat via getActiveChallenge geladen).
+ */
+export async function getChallengeHistory(
+  groupId: string,
+  limit = 5,
+): Promise<ChallengeHistoryEntry[]> {
+  return db
+    .select({
+      id: teamChallenge.id,
+      title: teamChallenge.title,
+      startsOn: teamChallenge.startsOn,
+      endsOn: teamChallenge.endsOn,
+      status: teamChallenge.status,
+      stakeText: teamChallenge.stakeText,
+    })
+    .from(teamChallenge)
+    .where(
+      and(
+        eq(teamChallenge.groupId, groupId),
+        ne(teamChallenge.status, "active"),
+      ),
+    )
+    .orderBy(desc(teamChallenge.createdAt))
+    .limit(limit);
 }
 
 /** Neueste aktive Challenge einer Gruppe (MVP: nur eine ist relevant). */
