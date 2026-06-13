@@ -24,6 +24,7 @@ import type {
   MemberDetailData,
   MemberDetailDay,
 } from "@/lib/social/get-team-member-detail";
+import { SocialReactionButtons } from "@/components/social/social-reaction-buttons";
 import { StepsInput } from "./steps-input";
 
 const WEEKDAY_LABELS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
@@ -371,22 +372,23 @@ export function MemberDetail({ data }: Props) {
               <Heart className="size-5" />
             </span>
             <div>
-              <CardTitle className="text-base">Motivation</CardTitle>
-              <p className="text-xs text-muted">Sende einen kleinen Push.</p>
+              <CardTitle className="text-base">Motivation senden</CardTitle>
+              <p className="text-xs text-muted">
+                Schick{" "}
+                <span className="font-medium text-foreground">
+                  {data.displayName}
+                </span>{" "}
+                einen kurzen Push.
+              </p>
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted">
-              Motiviere{" "}
-              <span className="font-medium text-foreground">
-                {data.displayName}
-              </span>{" "}
-              mit einer Reaktion im{" "}
-              <Link href="/team" className="text-accent hover:underline">
-                Team-Feed
-              </Link>
-              .
-            </p>
+            <SocialReactionButtons
+              groupId={data.groupId}
+              targetType="member_week"
+              targetId={data.userId}
+              reactions={data.motivationReactions}
+            />
           </CardContent>
         </Card>
       )}

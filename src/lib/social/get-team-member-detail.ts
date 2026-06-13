@@ -1,7 +1,8 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { dailyNutritionLog } from "@/db/schema";
+import { dailyNutritionLog, socialReaction } from "@/db/schema";
+import type { ReactionCounts } from "./get-social-dashboard";
 import { getTodayBerlin, lastNDateStrings } from "@/lib/utils/date";
 import { getSocialDashboard } from "./get-social-dashboard";
 import { loadMemberWeeklySignals, WEEK_DAYS } from "./team-queries";
@@ -36,11 +37,14 @@ export interface MemberDetailData {
   userId: string;
   displayName: string;
   isCurrentUser: boolean;
+  groupId: string;
   today: MemberDailyStatus;
   weeklyScore: number;
   week: MemberDetailDay[];
   /** Heutiger Mahlzeiten-Status — nur Häkchen-Zähler, keine Details. */
   meals: SafeMealStatus;
+  /** Reaktionen des Viewers gegenüber diesem Mitglied (targetType: member_week). */
+  motivationReactions: ReactionCounts;
 }
 
 export async function getTeamMemberDetail(
@@ -95,24 +99,52 @@ export async function getTeamMemberDetail(
   );
 
   // Nur der boolesche Mahlzeiten-Status (keine Kalorien/Protein-Spalten gelesen).
-  const [todayNutrition] = await db
-    .select({ mealsStatus: dailyNutritionLog.mealsStatus })
-    .from(dailyNutritionLog)
-    .where(
-      and(
-        eq(dailyNutritionLog.userId, targetUserId),
-        eq(dailyNutritionLog.logDate, todayStr),
+  const [todayNutrition, motivationRows] = await Promise.all([
+    db
+      .select({ mealsStatus: dailyNutritionLog.mealsStatus })
+      .from(dailyNutritionLog)
+      .where(
+        and(
+          eq(dailyNutritionLog.userId, targetUserId),
+          eq(dailyNutritionLog.logDate, todayStr),
+        ),
+      )
+      .limit(1)
+      .then((rows) => rows[0]),
+    db
+      .select({ reactionType: socialReaction.reactionType })
+      .from(socialReaction)
+      .where(
+        and(
+          eq(socialReaction.groupId, social.activeGroup.id),
+          eq(socialReaction.userId, viewerUserId),
+          eq(socialReaction.targetType, "member_week"),
+          eq(socialReaction.targetId, targetUserId),
+        ),
       ),
-    )
-    .limit(1);
+  ]);
+
+  const motivationReactions: ReactionCounts = {
+    stark: { count: 0, mine: false },
+    weiter_so: { count: 0, mine: false },
+    respekt: { count: 0, mine: false },
+  };
+  for (const row of motivationRows) {
+    const key = row.reactionType as keyof ReactionCounts;
+    if (key in motivationReactions) {
+      motivationReactions[key] = { count: 1, mine: true };
+    }
+  }
 
   return {
     userId: targetUserId,
     displayName,
     isCurrentUser: targetUserId === viewerUserId,
+    groupId: social.activeGroup.id,
     today,
     weeklyScore: sig ? calculateWeeklyScore(sig.days) : 0,
     week,
     meals: sanitizeSocialMealStatus(todayNutrition?.mealsStatus),
+    motivationReactions,
   };
 }

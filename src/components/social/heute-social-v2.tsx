@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Trophy, Users2 } from "lucide-react";
+import { ArrowRight, Footprints, Trophy, Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Card,
@@ -11,6 +11,7 @@ import { buttonVariants } from "@/components/ui/button";
 import type { HeuteSocialSummary } from "@/lib/social/get-heute-social-summary";
 import { MemberStatusPills } from "@/components/team/member-status-pills";
 import { TeamEmptyState } from "@/components/team/team-empty-state";
+import { StepsInput } from "@/components/team/steps-input";
 import { SocialFeed } from "./social-feed";
 
 interface Props {
@@ -31,6 +32,8 @@ export function HeuteSocialV2({ summary }: Props) {
     members,
     feed,
     group,
+    todaySteps,
+    todayDate,
   } = summary;
 
   return (
@@ -109,6 +112,15 @@ export function HeuteSocialV2({ summary }: Props) {
             </Link>
           </div>
         )}
+
+        {/* Schritte Quick-Add */}
+        <div className="rounded-[var(--radius-sm)] border border-border bg-surface px-4 py-3">
+          <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-foreground">
+            <Footprints className="size-4 shrink-0 text-muted" />
+            Schritte heute
+          </p>
+          <StepsInput date={todayDate} initialSteps={todaySteps} />
+        </div>
 
         {/* Team-Status-Karten */}
         <div className="grid gap-2 sm:grid-cols-2">

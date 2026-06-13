@@ -5,6 +5,7 @@ export const SOCIAL_TARGET_TYPES = [
   "workout_session",
   "daily_mission",
   "daily_habit_log",
+  "member_week",
 ] as const;
 
 export type SocialReactionType = (typeof SOCIAL_REACTION_TYPES)[number];

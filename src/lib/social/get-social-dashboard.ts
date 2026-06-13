@@ -61,6 +61,7 @@ const EVENT_TEXT: Record<SocialTargetType, string> = {
   workout_session: "hat eine Trainingseinheit abgeschlossen",
   daily_mission: "hat eine Mission erledigt",
   daily_habit_log: "hat eine Gewohnheit abgehakt",
+  member_week: "hat Motivation gesendet",
 };
 
 /**
