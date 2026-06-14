@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Droplets, Flame, Utensils, UtensilsCrossed } from "lucide-react";
+import { CalendarDays, Droplets, Flame, Plus, UtensilsCrossed } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   getActiveNutritionTarget,
   getTodayNutritionLog,
+  getTodayMealLogs,
+  getWeekNutritionSummary,
 } from "@/lib/nutrition/nutrition-data";
 import { NutritionGoals } from "@/components/nutrition/nutrition-goals";
-import { ProteinLog } from "@/components/nutrition/protein-log";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
-import { MealChecklist } from "@/components/nutrition/meal-checklist";
+import { MealLogForm } from "@/components/nutrition/meal-log-form";
+import { MealLogList } from "@/components/nutrition/meal-log-list";
+import { NutritionWeekHistory } from "@/components/nutrition/nutrition-week-history";
 import { PageHeader } from "@/components/layout/page-header";
 import {
   Card,
@@ -17,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getTodayBerlin } from "@/lib/utils/date";
 
 export const metadata: Metadata = { title: "Ernährung" };
 
@@ -27,16 +31,20 @@ export default async function ErnaehrungPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [target, log] = await Promise.all([
+  const todayStr = getTodayBerlin();
+
+  const [target, log, meals, weekSummaries] = await Promise.all([
     getActiveNutritionTarget(user.id),
     getTodayNutritionLog(user.id),
+    getTodayMealLogs(user.id),
+    getWeekNutritionSummary(user.id),
   ]);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Ernährung"
-        subtitle="Dein Tagesrahmen — einfach geloggt."
+        subtitle="Dein privater Tageslog."
       />
 
       {!target ? (
@@ -59,7 +67,9 @@ export default async function ErnaehrungPage() {
               </span>
               <div>
                 <CardTitle className="text-base">Tagesziele</CardTitle>
-                <p className="text-xs text-muted">Dein berechneter Rahmen.</p>
+                <p className="text-xs text-muted">
+                  Kalorien · Protein · Wasser
+                </p>
               </div>
             </CardHeader>
             <CardContent>
@@ -67,21 +77,22 @@ export default async function ErnaehrungPage() {
             </CardContent>
           </Card>
 
-          {/* Protein */}
+          {/* Heutige Mahlzeiten */}
           <Card>
             <CardHeader className="flex-row items-center gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-surface-3 text-muted">
-                <Utensils className="size-5" />
+                <Plus className="size-5" />
               </span>
               <div>
-                <CardTitle className="text-base">Protein eintragen</CardTitle>
+                <CardTitle className="text-base">Heute</CardTitle>
                 <p className="text-xs text-muted">
-                  Tageswert in Gramm — einfach aktualisieren.
+                  Was hast du heute gegessen?
                 </p>
               </div>
             </CardHeader>
-            <CardContent>
-              <ProteinLog currentG={log?.proteinG ?? null} />
+            <CardContent className="space-y-4">
+              <MealLogList entries={meals} />
+              <MealLogForm />
             </CardContent>
           </Card>
 
@@ -104,17 +115,23 @@ export default async function ErnaehrungPage() {
             </CardContent>
           </Card>
 
-          {/* Mahlzeiten */}
+          {/* 7-Tage-Übersicht */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Mahlzeiten</CardTitle>
-              <p className="text-xs text-muted">Was hast du heute gegessen?</p>
+            <CardHeader className="flex-row items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-surface-3 text-muted">
+                <CalendarDays className="size-5" />
+              </span>
+              <div>
+                <CardTitle className="text-base">Letzte 7 Tage</CardTitle>
+                <p className="text-xs text-muted">
+                  Geloggter Tag · Anzahl Mahlzeiten
+                </p>
+              </div>
             </CardHeader>
             <CardContent>
-              <MealChecklist
-                initialStatus={
-                  (log?.mealsStatus ?? {}) as Record<string, boolean>
-                }
+              <NutritionWeekHistory
+                summaries={weekSummaries}
+                todayStr={todayStr}
               />
             </CardContent>
           </Card>

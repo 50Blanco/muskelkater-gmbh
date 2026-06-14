@@ -50,6 +50,13 @@
       "when": 1781395002119,
       "tag": "0006_phase13_privacy_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781398288447,
+      "tag": "0007_phase14_meal_log",
+      "breakpoints": true
     }
   ]
 }

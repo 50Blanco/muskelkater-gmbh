@@ -2,14 +2,16 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, sum } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
-import { dailyMission, dailyNutritionLog } from "@/db/schema";
+import { dailyMission, dailyNutritionLog, mealLog } from "@/db/schema";
 import {
   logProteinSchema,
   addWaterSchema,
   toggleMealSchema,
+  addMealLogSchema,
+  deleteMealLogSchema,
 } from "@/lib/validation/nutrition";
 import { getTodayBerlin } from "@/lib/utils/date";
 
@@ -186,6 +188,139 @@ export async function toggleMeal(rawInput: unknown): Promise<ActionResult> {
       err instanceof Error ? err.message : err,
     );
     return { error: "Speichern hat nicht geklappt. Bitte versuche es gleich noch einmal." };
+  }
+
+  revalidatePath("/ernaehrung");
+  revalidatePath("/heute");
+  return { ok: true };
+}
+
+/* ------------------------------------------------------------------ */
+/* Meal-Log (Phase 14)                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Synchronisiert die Tagesaggregat-Spalten in daily_nutrition_log aus meal_log.
+ * Wird nach jeder meal_log-Mutation aufgerufen.
+ * Team-Scoring liest nur daily_nutrition_log — nie meal_log direkt.
+ */
+async function syncDailyNutritionTotals(
+  userId: string,
+  logDate: string,
+): Promise<void> {
+  const [totals] = await db
+    .select({
+      totalCalories: sum(mealLog.caloriesKcal),
+      totalProtein: sum(mealLog.proteinG),
+      hasMeals: sql<boolean>`count(*) > 0`,
+    })
+    .from(mealLog)
+    .where(and(eq(mealLog.userId, userId), eq(mealLog.logDate, logDate)));
+
+  const calories = totals?.totalCalories ? parseInt(totals.totalCalories, 10) : null;
+  const protein = totals?.totalProtein ? parseInt(totals.totalProtein, 10) : null;
+  const hasMeals = Boolean(totals?.hasMeals);
+
+  const now = new Date();
+
+  await db
+    .insert(dailyNutritionLog)
+    .values({
+      userId,
+      logDate,
+      waterMl: 0,
+      caloriesKcal: calories,
+      proteinG: protein,
+      mealsStatus: hasMeals ? { meal_log_active: true } : null,
+    })
+    .onConflictDoUpdate({
+      target: [dailyNutritionLog.userId, dailyNutritionLog.logDate],
+      set: {
+        caloriesKcal: calories,
+        proteinG: protein,
+        mealsStatus: hasMeals
+          ? sql`COALESCE(${dailyNutritionLog.mealsStatus}, '{}'::jsonb) || '{"meal_log_active": true}'::jsonb`
+          : sql`(${dailyNutritionLog.mealsStatus} - 'meal_log_active')`,
+        updatedAt: now,
+      },
+    });
+}
+
+/** Mahlzeit eintragen — privat, kein Team-Zugriff auf meal_log. */
+export async function addMealLog(rawInput: unknown): Promise<ActionResult> {
+  const parsed = addMealLogSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Ungültige Eingabe." };
+  }
+  const { mealType, title, caloriesKcal, proteinG } = parsed.data;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const today = getTodayBerlin();
+
+  try {
+    await db.insert(mealLog).values({
+      userId: user.id,
+      logDate: today,
+      mealType,
+      title,
+      caloriesKcal: caloriesKcal ?? null,
+      proteinG: proteinG ?? null,
+    });
+
+    await syncDailyNutritionTotals(user.id, today);
+    await markNutritionMissionDone(user.id, today);
+  } catch (err) {
+    console.error(
+      "addMealLog fehlgeschlagen:",
+      err instanceof Error ? err.message : err,
+    );
+    return { error: "Speichern hat nicht geklappt. Bitte versuche es gleich noch einmal." };
+  }
+
+  revalidatePath("/ernaehrung");
+  revalidatePath("/heute");
+  return { ok: true };
+}
+
+/** Mahlzeit löschen — nur eigene Einträge (userId-Check + RLS). */
+export async function deleteMealLog(rawInput: unknown): Promise<ActionResult> {
+  const parsed = deleteMealLogSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Ungültige Eingabe." };
+  }
+  const { mealLogId } = parsed.data;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  try {
+    const [entry] = await db
+      .select({ logDate: mealLog.logDate, userId: mealLog.userId })
+      .from(mealLog)
+      .where(and(eq(mealLog.id, mealLogId), eq(mealLog.userId, user.id)))
+      .limit(1);
+
+    if (!entry) return { error: "Mahlzeit nicht gefunden." };
+
+    await db
+      .delete(mealLog)
+      .where(and(eq(mealLog.id, mealLogId), eq(mealLog.userId, user.id)));
+
+    await syncDailyNutritionTotals(user.id, entry.logDate);
+  } catch (err) {
+    console.error(
+      "deleteMealLog fehlgeschlagen:",
+      err instanceof Error ? err.message : err,
+    );
+    return { error: "Löschen hat nicht geklappt. Bitte versuche es gleich noch einmal." };
   }
 
   revalidatePath("/ernaehrung");

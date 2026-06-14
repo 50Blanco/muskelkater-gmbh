@@ -63,6 +63,43 @@ export const toggleHabitSchema = z.object({
 });
 
 /* ------------------------------------------------------------------ */
+/* Meal-Log (Phase 14)                                               */
+/* ------------------------------------------------------------------ */
+
+export const MEAL_TYPE_LABELS: Record<MealKey, string> = {
+  fruehstueck: "Frühstück",
+  mittagessen: "Mittagessen",
+  abendessen: "Abendessen",
+  snack: "Snack",
+};
+
+export const addMealLogSchema = z.object({
+  mealType: z.enum([...MEAL_KEYS]),
+  title: z
+    .string()
+    .min(1, "Bezeichnung ist Pflicht.")
+    .max(120, "Maximal 120 Zeichen."),
+  caloriesKcal: z
+    .number()
+    .int("Bitte ganze Zahl eingeben.")
+    .min(1, "Mindestens 1 kcal.")
+    .max(9999, "Maximal 9999 kcal.")
+    .nullable()
+    .optional(),
+  proteinG: z
+    .number()
+    .int("Bitte ganze Zahl eingeben.")
+    .min(1, "Mindestens 1 g.")
+    .max(500, "Maximal 500 g.")
+    .nullable()
+    .optional(),
+});
+
+export const deleteMealLogSchema = z.object({
+  mealLogId: z.string().uuid("Ungültige Mahlzeit-ID."),
+});
+
+/* ------------------------------------------------------------------ */
 /* Hilfs-Typen                                                        */
 /* ------------------------------------------------------------------ */
 
@@ -70,6 +107,8 @@ export type LogProteinInput = z.infer<typeof logProteinSchema>;
 export type AddWaterInput = z.infer<typeof addWaterSchema>;
 export type ToggleMealInput = z.infer<typeof toggleMealSchema>;
 export type ToggleHabitInput = z.infer<typeof toggleHabitSchema>;
+export type AddMealLogInput = z.infer<typeof addMealLogSchema>;
+export type DeleteMealLogInput = z.infer<typeof deleteMealLogSchema>;
 
 /* ------------------------------------------------------------------ */
 /* Progress-Helper                                                    */

@@ -783,6 +783,36 @@ export const dailyStepLog = pgTable(
 );
 
 /* ------------------------------------------------------------------ */
+/* Mahlzeiten-Log (Phase 14)                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Individuelle Mahlzeiten-Einträge des Nutzers (privat, kein Team-Zugriff).
+ * Pro Tag können beliebig viele Einträge existieren.
+ * Keine sensiblen Felder: nur Beschreibung + optionale Makros (privat).
+ * Das Team sieht NIEMALS diese Tabelle — nur der boolean-Status aus
+ * daily_nutrition_log wird synchronisiert (see addMealLog / deleteMealLog).
+ */
+export const mealLog = pgTable(
+  "meal_log",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: userId(),
+    logDate: date("log_date", { mode: "string" }).notNull(),
+    mealType: text("meal_type").notNull(),
+    title: text("title").notNull(),
+    caloriesKcal: integer("calories_kcal"),
+    proteinG: integer("protein_g"),
+    ...timestamps,
+  },
+  (t) => [
+    index("idx_meal_log_user").on(t.userId),
+    index("idx_meal_log_date").on(t.userId, t.logDate),
+    ownerPolicy("meal_log", t.userId),
+  ],
+);
+
+/* ------------------------------------------------------------------ */
 /* Körper-Check-in (Phase 11)                                        */
 /* ------------------------------------------------------------------ */
 

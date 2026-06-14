@@ -36,19 +36,39 @@ export function NutritionGoals({ target, log }: Props) {
     );
   }
 
+  const currentCalories = log?.caloriesKcal ?? 0;
   const currentProtein = log?.proteinG ?? 0;
   const currentWater = log?.waterMl ?? 0;
+  const caloriesDone = currentCalories >= target.caloriesKcal;
   const proteinDone = currentProtein >= target.proteinG;
   const waterDone = currentWater >= target.waterMl;
 
   return (
     <dl className="space-y-4">
-      {/* Kalorien — nur Ziel, kein Tracking */}
-      <div className="flex items-baseline justify-between">
-        <dt className="text-sm text-muted">Kalorienziel</dt>
-        <dd className="font-display text-sm font-semibold text-foreground">
-          {target.caloriesKcal.toLocaleString("de-DE")} kcal
-        </dd>
+      {/* Kalorien */}
+      <div className="space-y-1.5">
+        <div className="flex items-baseline justify-between">
+          <dt className="text-sm text-muted">Kalorien</dt>
+          <dd className="font-display text-sm font-semibold">
+            {currentCalories > 0 ? (
+              <>
+                <span className={cn(caloriesDone ? "text-success" : "text-foreground")}>
+                  {currentCalories.toLocaleString("de-DE")}
+                </span>
+                <span className="text-dim">
+                  {" "}/ {target.caloriesKcal.toLocaleString("de-DE")} kcal
+                </span>
+              </>
+            ) : (
+              <span className="text-dim">
+                Ziel: {target.caloriesKcal.toLocaleString("de-DE")} kcal
+              </span>
+            )}
+          </dd>
+        </div>
+        {currentCalories > 0 && (
+          <ProgressBar value={currentCalories} max={target.caloriesKcal} />
+        )}
       </div>
 
       {/* Protein */}
