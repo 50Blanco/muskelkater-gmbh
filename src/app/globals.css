@@ -84,3 +84,8 @@ body::before {
   background: var(--color-accent);
   color: var(--color-accent-foreground);
 }
+
+/* Safe-area bottom padding for main content — accounts for fixed tabbar + iOS home indicator */
+@utility pb-safe-tabbar {
+  padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+}
