@@ -15,6 +15,7 @@ Kurze Reports liefern.
 * **Branch:** `master`
 * **GitHub Remote:** `https://github.com/50Blanco/muskelkater-gmbh.git`
 * **Production URL:** `https://muskelkater-gmbh.vercel.app`
+* **Phase 15 Merge-Commit:** `ff22c45` — `merge: Phase 15 — Coach foundation`
 * **Phase 14 Merge-Commit:** `efa1b86` — `merge: Phase 14 — Nutrition V2`
 * **Phase 13 Merge-Commit:** `0ba5521` — `merge: Phase 13 — Privacy and profile settings`
 * **Phase 12 Merge-Commit:** `91d4122` — `merge: Phase 12 — Challenge experience V2`
@@ -22,7 +23,7 @@ Kurze Reports liefern.
 * **Phase 10 Merge-Commit:** `76b0f40` — `merge: Phase 10 — Team experience V1`
 * **Phase 9 Merge-Commit:** `95bf2a4` — `merge: Phase 9 — Team challenge MVP`
 * **Working tree:** clean (untracked `.vscode/`, `muskelkater-gmbh/` — werden nicht committed)
-* **Gemergte Phasen:** 1 · 2 · 3 · 4 · 5 · 6 · 7A · 7B/7B1 · 7C · 8 · 9 · 10 · 11 · 12 · 13 · **14**
+* **Gemergte Phasen:** 1 · 2 · 3 · 4 · 5 · 6 · 7A · 7B/7B1 · 7C · 8 · 9 · 10 · 11 · 12 · 13 · 14 · **15**
 * **master auf GitHub:** aktuell (`git push` erledigt)
 
 ---
@@ -217,6 +218,39 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 * **Merge-Commit:** `10e6263`
 * **Production live:** `https://muskelkater-gmbh.vercel.app`
 
+### Phase 15 — Coach Foundation
+
+* **`/coach` — echte Coach-Seite** (ersetzt Phase 7 Placeholder):
+  * Vier Sektionen: **Jetzt wichtig** (Heute), **Team**, **Challenge**, **Woche**
+  * Hints als Cards mit Tone-Styling: `positive` (grün) / `neutral` (grau) / `nudge` (akzent)
+  * Server Component — kein Client State, kein `"use client"`, keine Browser-API
+* **Regelbasierte Coach-Engine** — `src/lib/coach/coach-rules.ts`:
+  * Pure functions, kein DB, kein KI, kein Server-Import, vollständig unit-testbar
+  * `getTodayHints(TodayCoachInput)` — Workout, Schritte, Ernährung, Wasser, Habits, Check-in
+  * `getTeamHints(TeamCoachInput)` — Team-Status, inaktive Mitglieder, Solo-Warnung
+  * `getChallengeHints(ChallengeCoachInput)` — Laufzeit, verbleibende Tage, Rang-Feedback
+  * `getWeekHints(WeekCoachInput)` — aktive Tage, Trainings, Ernährung, Check-in
+  * `generateAllCoachHints(CoachAllInputs)` — kombinierter Output aller Sektionen
+* **Server-only Loader** — `src/lib/coach/get-coach-dashboard.ts`:
+  * Reused `getSocialDashboard`, `loadMemberWeeklySignals`, `getActiveChallenge`
+  * Wochenfilter: nur Tage der aktuellen Mon–So-Woche (kein rolling-7 für Wochenzählung)
+  * Fallback auf Solo-Modus wenn kein Team aktiv
+* **`/heute` CTA** — „Coach öffnen →" Link im Coach-Block (kein UI-Bruch, additiv)
+* **Privacy-Invarianten:**
+  * Keine Körperwerte (Gewicht, Maße, Kalorien, Protein) in Hint-Texten
+  * Team-Hints zeigen nur Anzahl inaktiver Mitglieder, keine Namen
+  * 17 verbotene Begriffe (kg, kalorien, diät, versagt, scham, …) per Smoke-Test verifiziert
+  * Keine Schuld-/Scham-Sprache — alle Texte motivierend und ohne Druck
+* **Keine Migration** — kein neues DB-Schema; ausschließlich vorhandene Signale
+* **Neue Dateien:**
+  * `src/lib/coach/coach-rules.ts`
+  * `src/lib/coach/get-coach-dashboard.ts`
+  * `src/components/coach/coach-hint-card.tsx`
+  * `scripts/qa-phase15-coach-foundation.ts` — 661 Tests, alle grün
+* **Smoke-Script:** `scripts/qa-phase15-coach-foundation.ts` — 661 Tests PASS
+* **Merge-Commit:** `ff22c45`
+* **Production live:** `https://muskelkater-gmbh.vercel.app`
+
 ### Phase 14 — Nutrition V2
 
 * **`/ernaehrung` — echte private Tages-Mahlzeitenlog-Seite** (ersetzt Basis aus Phase 5):
@@ -294,6 +328,8 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 
 | Commit | Beschreibung |
 |--------|-------------|
+| `ff22c45` | merge: Phase 15 — Coach foundation |
+| `bc342e5` | feat: add phase 15 coach foundation |
 | `efa1b86` | merge: Phase 14 — Nutrition V2 |
 | `694788f` | feat: add phase 14 nutrition v2 |
 | `0ba5521` | merge: Phase 13 — Privacy and profile settings |
@@ -349,6 +385,8 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 * „Challenge ansehen" CTA auf `/team` und `/heute`
 * `/profil` — Display Name bearbeiten, Fitnessziel wählen, 7 Privacy-Toggles
 * Privacy-Layer: Team sieht nur freigegebene Signale; Scoring intern immer vollständig; Ranking-Anonymisierung
+* `/coach` — echte regelbasierte Coach-Seite: Heute / Team / Challenge / Woche (kein KI, keine Körperwerte, kein Chat)
+* „Coach öffnen →" CTA auf `/heute`
 
 ---
 
@@ -360,10 +398,11 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 * Health- und Safety-Daten bleiben privat
 * Keine echte Wett-/Geld-/Payment-Logik — nur Einsatz-Text als Spaß-Feature
 * Team-Challenge statt Wette
-* Food-AI: später, nicht jetzt
-* Coach: später, nicht jetzt
+* Food-AI: kein Scope
+* Coach: regelbasiert live (Phase 15) — kein KI-Chat, keine Push Notifications, keine Körperwerte in Hints
 * Body Check-in: Bonus-only (+50), kein Malus, kein Body-Shaming
 * Privacy: Scoring-Fairness — Punkte immer aus vollen Signalen; Masking nur auf Display-Layer
+* Coach-Hints: immer motivierend, keine Scham-Sprache
 
 ---
 
@@ -371,10 +410,10 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 
 * Mehrere Teams pro Nutzer — UI noch nicht gelöst (aktives Team = erste Gruppe)
 * Individuelle Challenge-Ziele fehlen
-* Coach-Seite (`/coach`) — Placeholder
 * Nutrition — Basis funktioniert; keine Food-Photo-AI
 * Schritte: manuell trackbar; keine Wearable-Anbindung
 * `/fortschritt` — Streak-Anzeige (Wochen in Folge) noch nicht gebaut
+* Coach: V1 live — keine Personalisierung über Zeit, kein KI, kein Chat
 
 ---
 
@@ -423,9 +462,27 @@ npx tsx scripts/qa-phase11-body-checkin.ts
 npx tsx scripts/qa-phase12-challenge-experience.ts
 npx tsx scripts/qa-phase13-privacy-profile.ts
 npx tsx scripts/qa-phase14-nutrition-v2.ts
+npx tsx scripts/qa-phase15-coach-foundation.ts
 ```
 
 ---
+
+## Testergebnisse Phase 15
+
+| Check | Ergebnis |
+|-------|----------|
+| `npm run build` | PASS (20 Routen, `/coach` Dynamic) |
+| `npx tsc --noEmit` | PASS |
+| `npm run lint` | PASS |
+| Phase 15 Coach Smoke | PASS (661 Tests) |
+| Phase 14 Nutrition V2 Smoke | PASS (41 Tests) |
+| Phase 13 Privacy/Profile Smoke | PASS (35 Tests) |
+| Vercel Production Deploy | PASS (`dpl_4uh9udT84GLFoQRU4tFXxkq7CMSj`) |
+| Live-Check `/login` | PASS (200) |
+| Live-Check `/heute` (Redirect) | PASS (→ `/login`) |
+| Live-Check `/team` (Redirect) | PASS (→ `/login`) |
+| Live-Check `/coach` (Redirect) | PASS (→ `/login`) |
+| Manueller Browser-Test | PASS (`/coach` Seite, Heute/Team/Challenge/Woche Cards, Coach öffnen CTA auf `/heute`) |
 
 ## Testergebnisse Phase 14
 
@@ -518,9 +575,9 @@ npx tsx scripts/qa-phase14-nutrition-v2.ts
 * Turbopack Cache-Probleme: `npm run dev:clean`
 * Workout-Session: kein Autosave, Sätze erst beim Abschluss
 * Schritte: manuell über `daily_step_log`; keine Wearables
-* Coach-Seite: Placeholder
 * Aktives Team = erste Gruppe des Nutzers (Mehrfach-Teams-UI offen)
-* Mahlzeiten-Detail im `/ernaehrung`: `MealChecklist` + `ProteinLog` noch im Codebase, aber nicht mehr angezeigt (können bei Bedarf entfernt werden)
+* Mahlzeiten-Detail im `/ernaehrung`: `MealChecklist` + `ProteinLog` noch im Codebase, aber nicht mehr angezeigt
+* Coach V1: keine Personalisierung über Zeit; Wochensignale aus rolling-7-Tage-Window (Coach-Sektion zeigt Mon–aktuellen Tag)
 
 ---
 
@@ -530,9 +587,9 @@ npx tsx scripts/qa-phase14-nutrition-v2.ts
 
 **Erst nach expliziter Freigabe durch den Nutzer darf wieder Code gebaut werden.**
 
-**Kandidaten für Phase 15:**
+**Kandidaten für Phase 16:**
 * Fortschritt-Streak (Wochen in Folge Check-in erledigt) — fehlte noch in Phase 11
+* Kalorien-Verlauf in `/fortschritt` (aus `daily_nutrition_log.calories_kcal`, befüllt durch meal_log Sync)
 * Mehrere Teams pro Nutzer — UI lösen
-* Coach-Seite Basis
 * Individuelle Challenge-Ziele (nur für den eigenen Nutzer sichtbar)
-* Kalorien-Verlauf in `/fortschritt` (aus `daily_nutrition_log.calories_kcal`, jetzt befüllt durch meal_log Sync)
+* Coach V2: Persistenz (zuletzt generierte Hints speichern), Verlauf-Anzeige
