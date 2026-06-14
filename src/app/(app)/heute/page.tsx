@@ -527,6 +527,15 @@ export default async function HeutePage() {
               Erholung zählt mit: Plane mindestens einen trainingsfreien Tag
               zwischen harten Einheiten.
             </p>
+            <div className="mt-4">
+              <Link
+                href="/coach"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:underline"
+              >
+                Coach öffnen
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>
