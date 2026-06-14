@@ -182,6 +182,35 @@ export const fitnessGoal = pgTable(
 );
 
 /* ------------------------------------------------------------------ */
+/* Privacy-Einstellungen (Phase 13)                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Feingliedrige Sichtbarkeits-Einstellungen pro Nutzer für den Team-Layer.
+ * Default: alles sichtbar (true). Körperwerte (Gewicht, Maße, Body-Fat, Kalorien)
+ * sind davon unabhängig immer privat — kein Toggle nötig.
+ * Eine Zeile pro Nutzer (UNIQUE user_id) — Upsert beim Speichern.
+ */
+export const userPrivacySettings = pgTable(
+  "user_privacy_settings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: userId().unique(),
+    showTraining: boolean("show_training").default(true).notNull(),
+    showSteps: boolean("show_steps").default(true).notNull(),
+    showNutrition: boolean("show_nutrition").default(true).notNull(),
+    showWater: boolean("show_water").default(true).notNull(),
+    showHabits: boolean("show_habits").default(true).notNull(),
+    showWeeklyCheckinStatus: boolean("show_weekly_checkin_status")
+      .default(true)
+      .notNull(),
+    showInRanking: boolean("show_in_ranking").default(true).notNull(),
+    ...timestamps,
+  },
+  (t) => [ownerPolicy("user_privacy_settings", t.userId)],
+);
+
+/* ------------------------------------------------------------------ */
 /* Körperdaten                                                       */
 /* ------------------------------------------------------------------ */
 

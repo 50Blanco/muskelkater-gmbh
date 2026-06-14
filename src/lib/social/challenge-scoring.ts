@@ -430,6 +430,86 @@ export function sanitizeSocialMealStatus(
 }
 
 /* ------------------------------------------------------------------ */
+/* Privacy-Masking für Team-Anzeige (Phase 13)                       */
+/* ------------------------------------------------------------------ */
+
+export interface TeamPrivacySettings {
+  showTraining: boolean;
+  showSteps: boolean;
+  showNutrition: boolean;
+  showWater: boolean;
+  showHabits: boolean;
+  showWeeklyCheckinStatus: boolean;
+  showInRanking: boolean;
+}
+
+/**
+ * Blendet Felder eines MemberDailyStatus gemäß den Privacy-Settings aus.
+ * Punkte werden intern weiterhin korrekt berechnet — diese Funktion maskiert
+ * nur die Anzeige-Felder für das Team. Nur für Fremd-Ansichten anwenden,
+ * niemals für die Eigenansicht des Nutzers.
+ */
+export function applyPrivacyMask(
+  status: MemberDailyStatus,
+  privacy: TeamPrivacySettings,
+): MemberDailyStatus {
+  const maskedWorkout = privacy.showTraining ? status.workoutDone : false;
+  const maskedStepsReached = privacy.showSteps ? status.stepsGoalReached : false;
+  const maskedSteps = privacy.showSteps ? status.steps : null;
+  const maskedNutrition = privacy.showNutrition ? status.nutritionLogged : false;
+  const maskedWater = privacy.showWater ? status.waterGoalReached : false;
+  const maskedHabits = privacy.showHabits ? status.habitsCompleted : 0;
+
+  const activeToday =
+    maskedWorkout ||
+    maskedStepsReached ||
+    maskedNutrition ||
+    maskedWater ||
+    maskedHabits > 0;
+
+  const maskedOpenSources = status.openSources.filter((s) => {
+    if (s.key === "workout") return privacy.showTraining;
+    if (s.key === "steps") return privacy.showSteps;
+    if (s.key === "nutrition") return privacy.showNutrition;
+    if (s.key === "water") return privacy.showWater;
+    if (s.key === "habit") return privacy.showHabits;
+    return true;
+  });
+
+  return {
+    workoutDone: maskedWorkout,
+    stepsGoalReached: maskedStepsReached,
+    steps: maskedSteps,
+    nutritionLogged: maskedNutrition,
+    waterGoalReached: maskedWater,
+    habitsCompleted: maskedHabits,
+    openSources: maskedOpenSources,
+    activeToday,
+    dailyScore: status.dailyScore,
+  };
+}
+
+/**
+ * Maskiert Leaderboard-Einträge für Mitglieder, die show_in_ranking=false gesetzt haben.
+ * Der aktuelle Nutzer sieht seinen eigenen Eintrag immer unmasked.
+ * Andere Mitglieder mit show_in_ranking=false erscheinen als „Privat".
+ * Score und Rank bleiben korrekt (für faire Wertung), nur der Name wird ersetzt.
+ */
+export function applyRankingPrivacy(
+  leaderboard: LeaderboardEntry[],
+  privacyMap: Map<string, TeamPrivacySettings>,
+): LeaderboardEntry[] {
+  return leaderboard.map((entry) => {
+    if (entry.isCurrentUser) return entry;
+    const privacy = privacyMap.get(entry.userId);
+    if (privacy && !privacy.showInRanking) {
+      return { ...entry, displayName: "Privat" };
+    }
+    return entry;
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* Zugriffs-Helper Member-Detail                                      */
 /* ------------------------------------------------------------------ */
 

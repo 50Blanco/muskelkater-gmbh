@@ -7,6 +7,7 @@ import { getTodayBerlin, lastNDateStrings } from "@/lib/utils/date";
 import { getSocialDashboard } from "./get-social-dashboard";
 import { loadMemberWeeklySignals, WEEK_DAYS } from "./team-queries";
 import {
+  applyPrivacyMask,
   calculateDailyScore,
   calculateWeeklyScore,
   canViewMemberDetail,
@@ -16,6 +17,7 @@ import {
   type MemberDailyStatus,
   type SafeMealStatus,
 } from "./challenge-scoring";
+import { getUserPrivacy } from "./get-user-privacy";
 
 /**
  * Server-only Loader für `/team/[memberId]`.
@@ -46,6 +48,8 @@ export interface MemberDetailData {
   meals: SafeMealStatus;
   /** Reaktionen des Viewers gegenüber diesem Mitglied (targetType: member_week). */
   motivationReactions: ReactionCounts;
+  /** Check-in-Status dieser Woche (false wenn member showWeeklyCheckinStatus=false gesetzt hat). */
+  weeklyCheckinDone: boolean;
 }
 
 export async function getTeamMemberDetail(
@@ -66,28 +70,49 @@ export async function getTeamMemberDetail(
 
   const todayStr = getTodayBerlin();
   const dateKeys = lastNDateStrings(todayStr, WEEK_DAYS);
+  const isOwnProfile = viewerUserId === targetUserId;
 
-  const signals = await loadMemberWeeklySignals(
-    [targetUserId],
-    social.activeGroup.id,
-    todayStr,
-  );
+  const [signals, targetPrivacy] = await Promise.all([
+    loadMemberWeeklySignals([targetUserId], social.activeGroup.id, todayStr),
+    isOwnProfile ? Promise.resolve(null) : getUserPrivacy(targetUserId),
+  ]);
   const sig = signals.get(targetUserId);
 
   const week: MemberDetailDay[] = dateKeys.map((date, i) => {
     const day = sig?.days[i];
-    return {
-      date,
+    const raw = {
       workoutDone: day?.workoutCompleted ?? false,
       nutritionLogged: day?.nutritionLogged ?? false,
       waterGoalReached: day?.waterGoalReached ?? false,
       stepsGoalReached: day?.stepsGoalReached ?? false,
       habitsCompleted: day?.habitsCompleted ?? 0,
+    };
+    const masked =
+      !isOwnProfile && targetPrivacy
+        ? {
+            workoutDone: targetPrivacy.showTraining ? raw.workoutDone : false,
+            nutritionLogged: targetPrivacy.showNutrition
+              ? raw.nutritionLogged
+              : false,
+            waterGoalReached: targetPrivacy.showWater
+              ? raw.waterGoalReached
+              : false,
+            stepsGoalReached: targetPrivacy.showSteps
+              ? raw.stepsGoalReached
+              : false,
+            habitsCompleted: targetPrivacy.showHabits
+              ? raw.habitsCompleted
+              : 0,
+          }
+        : raw;
+    return {
+      date,
+      ...masked,
       dailyScore: day ? calculateDailyScore(day) : 0,
     };
   });
 
-  const today = getMemberDailyStatus(
+  const rawStatus = getMemberDailyStatus(
     sig?.today ?? {
       workoutCompleted: false,
       stepsGoalReached: false,
@@ -98,6 +123,10 @@ export async function getTeamMemberDetail(
       steps: null,
     },
   );
+  const today =
+    !isOwnProfile && targetPrivacy
+      ? applyPrivacyMask(rawStatus, targetPrivacy)
+      : rawStatus;
 
   // Nur der boolesche Mahlzeiten-Status (keine Kalorien/Protein-Spalten gelesen).
   const [todayNutrition, motivationRows] = await Promise.all([
@@ -138,17 +167,21 @@ export async function getTeamMemberDetail(
   }
 
   const baseScore = sig ? calculateWeeklyScore(sig.days) : 0;
-  const checkinBonus = sig?.weeklyCheckinDone ? POINTS.bodyCheckin : 0;
+  const checkinDone = sig?.weeklyCheckinDone ?? false;
+  const checkinVisible =
+    isOwnProfile || !targetPrivacy || targetPrivacy.showWeeklyCheckinStatus;
+  const checkinBonus = checkinDone ? POINTS.bodyCheckin : 0;
 
   return {
     userId: targetUserId,
     displayName,
-    isCurrentUser: targetUserId === viewerUserId,
+    isCurrentUser: isOwnProfile,
     groupId: social.activeGroup.id,
     today,
     weeklyScore: baseScore + checkinBonus,
     week,
     meals: sanitizeSocialMealStatus(todayNutrition?.mealsStatus),
     motivationReactions,
+    weeklyCheckinDone: checkinVisible ? checkinDone : false,
   };
 }
