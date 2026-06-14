@@ -15,12 +15,13 @@ Kurze Reports liefern.
 * **Branch:** `master`
 * **GitHub Remote:** `https://github.com/50Blanco/muskelkater-gmbh.git`
 * **Production URL:** `https://muskelkater-gmbh.vercel.app`
+* **Phase 13 Merge-Commit:** `0ba5521` — `merge: Phase 13 — Privacy and profile settings`
 * **Phase 12 Merge-Commit:** `91d4122` — `merge: Phase 12 — Challenge experience V2`
 * **Phase 11 Merge-Commit:** `10e6263` — `merge: Phase 11 — Progress and weekly body check-in`
 * **Phase 10 Merge-Commit:** `76b0f40` — `merge: Phase 10 — Team experience V1`
 * **Phase 9 Merge-Commit:** `95bf2a4` — `merge: Phase 9 — Team challenge MVP`
 * **Working tree:** clean (untracked `.vscode/`, `muskelkater-gmbh/` — werden nicht committed)
-* **Gemergte Phasen:** 1 · 2 · 3 · 4 · 5 · 6 · 7A · 7B/7B1 · 7C · 8 · 9 · 10 · 11 · **12**
+* **Gemergte Phasen:** 1 · 2 · 3 · 4 · 5 · 6 · 7A · 7B/7B1 · 7C · 8 · 9 · 10 · 11 · 12 · **13**
 * **master auf GitHub:** aktuell (`git push` erledigt)
 
 ---
@@ -215,12 +216,50 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 * **Merge-Commit:** `10e6263`
 * **Production live:** `https://muskelkater-gmbh.vercel.app`
 
+### Phase 13 — Privacy & Profile Settings
+
+* **Neue DB-Tabelle `user_privacy_settings`** — 7 feingranulare Toggle-Felder:
+  * `show_training`, `show_steps`, `show_nutrition`, `show_water`, `show_habits`, `show_weekly_checkin_status`, `show_in_ranking`
+  * Alle default `true` (opt-out statt opt-in)
+  * `UNIQUE(user_id)` — ein Eintrag pro Nutzer
+  * RLS owner-only Policy `user_privacy_settings_owner` — in Production verifiziert
+* **Migration** `drizzle/0006_phase13_privacy_settings.sql`:
+  * Erstellt Tabelle, aktiviert RLS, fügt FK-Constraint und Owner-Policy hinzu
+  * Journal-Eintrag `idx: 6` + Snapshot `0006_snapshot.json` — via `drizzle-kit generate`
+  * In Supabase Production angewendet via MCP (`apply_migration`)
+* **Privacy-Designprinzipien (unveränderlich):**
+  * Körperdaten (Gewicht, Bauchumfang, Armumfang, Body-Fat, Safety) immer privat — kein Toggle nötig/möglich
+  * Scoring/Punkte immer aus vollen ungemaskten Signalen berechnet (intern, fair)
+  * Masking nur auf Display-Layer (Team-Ansichten) angewendet — Scores bleiben korrekt
+  * `show_in_ranking = false`: Nutzer erscheint als „Privat" in anderen; eigene Ansicht immer unmaskiert
+  * Gewinner-Bestimmung immer aus `rawLeaderboard` (real, nicht maskiert)
+  * Eigenes Profil (`isCurrentUser` / `isOwnProfile`) wird niemals maskiert
+* **Neue Dateien:**
+  * `src/lib/social/get-user-privacy.ts` — `getUserPrivacy(userId)` + `getManyUserPrivacy(userIds[])`, `DEFAULT_PRIVACY` (alle `true`), `server-only`
+  * `src/lib/validation/profile.ts` — `updateDisplayNameSchema`, `updateFitnessGoalSchema`, `updatePrivacySettingsSchema`, `GOAL_TYPE_LABELS`
+  * `src/app/(app)/profil/actions.ts` — Server Actions: `updateDisplayName`, `updateFitnessGoal`, `updatePrivacySettings` (upsert mit `onConflictDoUpdate`)
+  * `src/app/(app)/profil/profile-form.tsx` — Client Component: Display Name + Fitnessziel (useActionState)
+  * `src/app/(app)/profil/privacy-settings-form.tsx` — Client Component: 7 Toggle-Schalter mit `useOptimistic` + `useTransition`
+* **Modifizierte Dateien:**
+  * `src/db/schema.ts` — `userPrivacySettings` Tabelle nach `fitnessGoal`
+  * `src/lib/social/challenge-scoring.ts` — `applyPrivacyMask()` + `applyRankingPrivacy()` + `TeamPrivacySettings` Interface
+  * `src/lib/social/get-team-dashboard.ts` — lädt `privacyMap` parallel; maskiert Status und Check-in; Leaderboard via `applyRankingPrivacy`
+  * `src/lib/social/get-team-member-detail.ts` — lädt `targetPrivacy`; maskiert per-Signal-Felder in `week[]` und `today`; `weeklyCheckinDone` gated
+  * `src/lib/social/get-challenge-detail.ts` — lädt `privacyMap` parallel; `rawLeaderboard` für Gewinner; `leaderboard` gemaskiert
+* **`/profil` neu:** 3 Cards — Konto (Email, Logout), Mein Profil (DisplayName-Editor, Fitnessziel-Picker), Datenschutz & Sichtbarkeit (7 Privacy-Toggles)
+* **Zod v4:** Alle Schemas nutzen `.issues[0]?.message` (nicht `.errors`) — konsistent mit vorherigen Phasen
+* **Smoke-Script:** `scripts/qa-phase13-privacy-profile.ts` — 35 Tests PASS
+* **Merge-Commit:** `0ba5521`
+* **Production live:** `https://muskelkater-gmbh.vercel.app`
+
 ---
 
 ## Wichtige Commits
 
 | Commit | Beschreibung |
 |--------|-------------|
+| `0ba5521` | merge: Phase 13 — Privacy and profile settings |
+| `af49e82` | feat: add phase 13 privacy and profile settings |
 | `91d4122` | merge: Phase 12 — Challenge experience V2 |
 | `3864f0d` | feat: add phase 12 challenge experience |
 | `10e6263` | merge: Phase 11 — Progress and weekly body check-in |
@@ -270,6 +309,8 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 * Challenge-Vorlagen im Create-Formular (5 statische Presets)
 * Challenge-History auf `/team` (vergangene Challenges mit Link)
 * „Challenge ansehen" CTA auf `/team` und `/heute`
+* `/profil` — Display Name bearbeiten, Fitnessziel wählen, 7 Privacy-Toggles
+* Privacy-Layer: Team sieht nur freigegebene Signale; Scoring intern immer vollständig; Ranking-Anonymisierung
 
 ---
 
@@ -284,6 +325,7 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 * Food-AI: später, nicht jetzt
 * Coach: später, nicht jetzt
 * Body Check-in: Bonus-only (+50), kein Malus, kein Body-Shaming
+* Privacy: Scoring-Fairness — Punkte immer aus vollen Signalen; Masking nur auf Display-Layer
 
 ---
 
@@ -293,7 +335,6 @@ Team sehen → Challenge verfolgen → Punkte holen → Mitglieder motivieren �
 * Individuelle Challenge-Ziele fehlen
 * Coach-Seite (`/coach`) — Placeholder
 * Nutrition — Basis funktioniert; keine Food-Photo-AI
-* Privacy- und Sichtbarkeits-Settings — noch nicht gebaut
 * Schritte: manuell trackbar; keine Wearable-Anbindung
 * `/fortschritt` — Streak-Anzeige (Wochen in Folge) noch nicht gebaut
 
@@ -342,9 +383,25 @@ npx tsx scripts/qa-phase9-team-challenge-smoke.ts
 npx tsx scripts/qa-phase10-ux-smoke.ts
 npx tsx scripts/qa-phase11-body-checkin.ts
 npx tsx scripts/qa-phase12-challenge-experience.ts
+npx tsx scripts/qa-phase13-privacy-profile.ts
 ```
 
 ---
+
+## Testergebnisse Phase 13
+
+| Check | Ergebnis |
+|-------|----------|
+| `npm run build` | PASS (20 Routen, inkl. `/profil` Dynamic) |
+| `npx tsc --noEmit` | PASS |
+| `npm run lint` | PASS (pre-existing Fehler in `muskelkater-gmbh/tests/trace-verification.js` unverändert) |
+| Phase 13 Privacy/Profile Smoke | PASS (35 Tests) |
+| Phase 12 Challenge Smoke | PASS (28 Tests) |
+| Phase 11 Body Check-in Smoke | PASS (28 Tests) |
+| Vercel Production Deploy | PASS (`dpl_7Gna9fKXHczgUk6Vi4oczoVfKCrv`) |
+| Live-Check `/login` | PASS (Login-Seite lädt korrekt) |
+| Live-Check `/heute` (Redirect) | PASS (Redirect zu Login für unauthentifizierte Nutzer) |
+| Manueller Browser-Test | PASS (Privacy-Toggles, Display Name, Fitnessziel, Masking im Team) |
 
 ## Testergebnisse Phase 12
 
@@ -418,10 +475,8 @@ npx tsx scripts/qa-phase12-challenge-experience.ts
 
 **Erst nach expliziter Freigabe durch den Nutzer darf wieder Code gebaut werden.**
 
-**Kandidaten für Phase 13:**
+**Kandidaten für Phase 14:**
 * Fortschritt-Streak (Wochen in Folge Check-in erledigt) — fehlte noch in Phase 11
-* Profil-Seite aufwerten (Ziele anpassen, Plan wechseln)
-* Privacy-Settings (Sichtbarkeit für Team)
-* Mehrere Teams pro Nutzer
+* Mehrere Teams pro Nutzer — UI lösen
 * Coach-Seite Basis
 * Individuelle Challenge-Ziele (nur für den eigenen Nutzer sichtbar)
