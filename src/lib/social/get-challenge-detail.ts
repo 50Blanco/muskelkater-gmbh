@@ -9,6 +9,7 @@ import {
 } from "@/db/schema";
 import { getTodayBerlin } from "@/lib/utils/date";
 import {
+  applyRankingPrivacy,
   buildLeaderboard,
   calculateWeeklyScore,
   determineChallengeWinner,
@@ -19,6 +20,7 @@ import {
   type WinnerResult,
 } from "./challenge-scoring";
 import { loadMemberWeeklySignals } from "./team-queries";
+import { getManyUserPrivacy } from "./get-user-privacy";
 import type { ChallengeStatus } from "@/lib/validation/challenge";
 
 /**
@@ -105,14 +107,13 @@ export async function getChallengeDetail(
 
   const memberUserIds = memberRows.map((m) => m.userId);
 
-  // 4. Wochensignale laden (aktuelle Woche)
-  const signals = await loadMemberWeeklySignals(
-    memberUserIds,
-    challengeRow.groupId,
-    todayStr,
-  );
+  // 4. Wochensignale + Privacy-Settings parallel laden
+  const [signals, privacyMap] = await Promise.all([
+    loadMemberWeeklySignals(memberUserIds, challengeRow.groupId, todayStr),
+    getManyUserPrivacy(memberUserIds),
+  ]);
 
-  // 5. Scored list + Leaderboard
+  // 5. Scored list + Leaderboard (Score immer aus vollen Signalen — fair)
   const scored = memberRows.map((m) => {
     const sig = signals.get(m.userId);
     const baseScore = sig ? calculateWeeklyScore(sig.days) : 0;
@@ -124,14 +125,15 @@ export async function getChallengeDetail(
     };
   });
 
-  const leaderboard = buildLeaderboard(scored, userId);
+  const rawLeaderboard = buildLeaderboard(scored, userId);
+  const leaderboard = applyRankingPrivacy(rawLeaderboard, privacyMap);
 
   // 6. Beendet-Status: explizit gesetzt oder Enddatum überschritten
   const isEnded =
     challengeRow.status !== "active" || challengeRow.endsOn < todayStr;
 
-  // 7. Gewinner nur für beendete Challenges
-  const winner = isEnded ? determineChallengeWinner(leaderboard) : null;
+  // 7. Gewinner nur für beendete Challenges — aus dem unmaskierten Leaderboard
+  const winner = isEnded ? determineChallengeWinner(rawLeaderboard) : null;
 
   // 8. Eigene offene Quellen für „Heute noch Punkte holen"
   const ownSig = signals.get(userId);

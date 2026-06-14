@@ -43,6 +43,13 @@
       "when": 1781373175541,
       "tag": "0005_phase11_weekly_body_checkin",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781395002119,
+      "tag": "0006_phase13_privacy_settings",
+      "breakpoints": true
     }
   ]
 }

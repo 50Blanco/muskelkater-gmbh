@@ -14,6 +14,8 @@ import {
   type ChallengeHistoryEntry,
 } from "./team-queries";
 import {
+  applyPrivacyMask,
+  applyRankingPrivacy,
   buildLeaderboard,
   buildSupportHints,
   calculateWeeklyScore,
@@ -25,6 +27,7 @@ import {
   type MemberDailyStatusInput,
   type SupportHint,
 } from "./challenge-scoring";
+import { getManyUserPrivacy } from "./get-user-privacy";
 
 /**
  * Server-only Loader für `/team`.
@@ -93,10 +96,11 @@ export async function getTeamDashboard(
   const todayStr = getTodayBerlin();
   const memberUserIds = social.members.map((m) => m.userId);
 
-  const [challenge, signals, pastChallenges] = await Promise.all([
+  const [challenge, signals, pastChallenges, privacyMap] = await Promise.all([
     getActiveChallenge(group.id),
     loadMemberWeeklySignals(memberUserIds, group.id, todayStr),
     getChallengeHistory(group.id, 5),
+    getManyUserPrivacy(memberUserIds),
   ]);
 
   const scored = social.members.map((m) => {
@@ -104,12 +108,22 @@ export async function getTeamDashboard(
     const baseScore = sig ? calculateWeeklyScore(sig.days) : 0;
     const checkinBonus = sig?.weeklyCheckinDone ? POINTS.bodyCheckin : 0;
     const weeklyScore = baseScore + checkinBonus;
-    const status = getMemberDailyStatus(sig ? sig.today : EMPTY_TODAY);
-    const weeklyCheckinDone = sig?.weeklyCheckinDone ?? false;
-    return { ...m, weeklyScore, status, weeklyCheckinDone };
+    const rawStatus = getMemberDailyStatus(sig ? sig.today : EMPTY_TODAY);
+    const privacy = privacyMap.get(m.userId);
+    const isOwnEntry = m.userId === userId;
+    // Eigenansicht nie maskieren
+    const status =
+      isOwnEntry || !privacy
+        ? rawStatus
+        : applyPrivacyMask(rawStatus, privacy);
+    const weeklyCheckinDone =
+      isOwnEntry || !privacy || privacy.showWeeklyCheckinStatus
+        ? (sig?.weeklyCheckinDone ?? false)
+        : false;
+    return { ...m, weeklyScore, status, weeklyCheckinDone, rawStatus };
   });
 
-  const leaderboard = buildLeaderboard(
+  const rawLeaderboard = buildLeaderboard(
     scored.map((s) => ({
       userId: s.userId,
       displayName: s.displayName,
@@ -117,7 +131,8 @@ export async function getTeamDashboard(
     })),
     userId,
   );
-  const rankByUser = new Map(leaderboard.map((e) => [e.userId, e.rank]));
+  const leaderboard = applyRankingPrivacy(rawLeaderboard, privacyMap);
+  const rankByUser = new Map(rawLeaderboard.map((e) => [e.userId, e.rank]));
 
   const members: TeamMemberCard[] = scored
     .map((s) => ({
@@ -135,6 +150,7 @@ export async function getTeamDashboard(
         a.rank - b.rank || a.displayName.localeCompare(b.displayName, "de"),
     );
 
+  // Support-Hints basieren auf dem gemaskten Status (was das Team sieht)
   const supportHints = buildSupportHints(
     scored.map((s) => ({
       userId: s.userId,
